@@ -1,0 +1,5 @@
+exp time = 120003.528
+"BalanceRatioSelector": "Red",  # Select red channel for white balance
+"BalanceRatio": 3.45,  # Initial white balance ratio for red channel
+"BalanceRatioSelector": "Blue",  # Select red channel for white balance
+"BalanceRatio": 1.39,  # Initial white balance ratio for red channel
