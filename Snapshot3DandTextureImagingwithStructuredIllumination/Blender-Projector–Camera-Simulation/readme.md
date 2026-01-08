@@ -1,5 +1,6 @@
 # Blender Projector–Camera Simulation (Displaced Plane + Pattern Projection)
 
+![alt text](blender_setup_description.png)
 This repo contains a minimal **Blender-based projector–camera setup** driven by a real calibration file. It builds a simple scene with:
 
 * a **displaced plane** (from a grayscale height map),
