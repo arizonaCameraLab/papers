@@ -384,13 +384,11 @@ are generated **only after running** `traditional_3d_reconstruction/traditional_
 
 Calibration must be completed **before reconstruction**.
 
-### Calibration notebook
-
 Open:
 
 * `projector_camera_calibration/proj_cam_calibration.ipynb`
 
-Typical steps:
+### Typical steps
 
 1. Select a calibration session folder, e.g.
 
@@ -416,7 +414,7 @@ Open:
 
 * `traditional_3d_reconstruction/traditional_3d_reconstruction.ipynb`
 
-### Typical workflow
+### Typical steps
 
 1. Select an experiment session folder, e.g.
 
