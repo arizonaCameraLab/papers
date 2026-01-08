@@ -1,7 +1,5 @@
 # Projector–Camera Control System  
 
----  
-
 <img src="GUI-Screenshot.png" width="100%">  
 
 **Figure:** Graphical user interface of the projector–camera control system.
