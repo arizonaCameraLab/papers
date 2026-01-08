@@ -187,6 +187,12 @@ If you don’t see the output where you expect:
 
 ---
 
+## How to Cite / Acknowledge
+
+If you use this codebase, Blender setup, or rendered results in academic publications, technical reports, or derived projects, please cite or acknowledge this repository as the **Blender-based projector–camera simulation and validation framework** accompanying your work.
+
+---
+
 ## Author
 
 **Xiao Wang**
