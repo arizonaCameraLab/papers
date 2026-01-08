@@ -33,16 +33,47 @@ The goal is to reproduce / validate real system geometry inside Blender and rend
 
 ## Requirements
 
-* **Blender 4.x** → use `pcs_setup_new_main_ver4.py` + `pcs_setup_new_utils_ver4.py`
-* **Blender 5.x** → use `pcs_setup_new_main_ver5.py` + `pcs_setup_new_utils_ver5.py`
+### Blender
 
-The scripts use Blender’s built-in Python plus:
+This project supports **Blender 4.x and 5.x**, with version-specific entry scripts:
+
+* **Blender 4.x**
+  Use:
+
+  * `pcs_setup_new_main_ver4.py`
+  * `pcs_setup_new_utils_ver4.py`
+
+* **Blender 5.x**
+  Use:
+
+  * `pcs_setup_new_main_ver5.py`
+  * `pcs_setup_new_utils_ver5.py`
+
+⚠️ Please make sure to use the script pair that matches your installed Blender version.
+
+---
+
+### Python Environment (Blender)
+
+The scripts run inside **Blender’s built-in Python environment** and require:
 
 * `numpy`
-* `mathutils` (comes with Blender)
+* `mathutils` (bundled with Blender)
 * `bpy` (Blender Python API)
 
-> If your Blender Python doesn’t include `numpy`, install it into Blender’s Python, or run on a Blender build that already bundles numpy.
+> **Note:**
+> Some Blender builds do not ship with `numpy` enabled by default.
+> If `numpy` is missing, install it into Blender’s Python environment or use a Blender distribution that already includes it.
+
+---
+
+### Blender Add-on (Required)
+
+This project depends on the **Projectors** add-on for Blender:
+
+🔗 [https://github.com/Ocupe/Projectors](https://github.com/Ocupe/Projectors)
+
+Please install and enable the add-on in Blender before running the setup scripts.
 
 ---
 
