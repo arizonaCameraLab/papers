@@ -445,7 +445,7 @@ class CameraViewer(QWidget):
 
     def init_ui(self):
         # Window title and initial size
-        self.setWindowTitle("Projector-Camera Calibration System")
+        self.setWindowTitle("Projector-Camera Control System")
         self.resize(1000, 600)
 
         # Image display area
