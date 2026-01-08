@@ -11,9 +11,9 @@ The GUI enables **live camera preview**, **camera parameter control**, and **ful
 The following diagram summarizes the **end-to-end workflow** implemented in this repository, from GUI-based data acquisition to offline calibration and 3D reconstruction.
   
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                   Projector–Camera Control System                   │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────┐
+│  Projector–Camera Control System  │
+└───────────────────────────────────┘
              │
              ▼
       [GUI] python main.py
@@ -35,16 +35,15 @@ Save → calibration_capture/              Save → projection_exp_capture/
      ▼                                       ▼
 Offline: proj_cam_calibration.ipynb      Offline: traditional_3d_reconstruction.ipynb
      │                                       │
-     ├──────────────┐                        │
-     ▼              │                        ▼
-Outputs:            │              Uses calibration results:
-- camera intrinsics │              - intrinsics / extrinsics
-- extrinsics        │
-- final summary     │                        ▼
-- checkerboard poses└────────────────> Reconstruction Outputs:
-                                   - decoded correspondences
-                                   - pointcloud_camera / pointcloud_world
-                                   - interpolated maps (.npy)
+     ▼                                       ▼
+Outputs: ──────────────────────────────> Uses calibration results:
+- camera intrinsics                      - intrinsics / extrinsics
+- extrinsics                                 │
+- final summary                              ▼
+- checkerboard poses                     Reconstruction Outputs:
+                                         - decoded correspondences
+                                         - point cloud
+                                         - interpolated height/depth maps
 ```
 
 ---
