@@ -240,7 +240,7 @@ When **Gray code** is selected as the pattern type, the GUI provides a **Generat
 * enabling **Gray-code step / effective pixel binning**, which reduces the highest spatial frequency of the pattern;
 * enabling **shifted bit-0 Gray-code variants**, which are used to create a synthetic higher-frequency pattern.
 
-The shifted bit-0 approach works by projecting two low-frequency Gray-code patterns with a small spatial offset in the least significant bit and computing their difference to create a synthetic higher-frequency pattern. This strategy mitigates spatial aliasing caused by projector optics and maintains reliable decoding accuracy under pixel binning or reduced projector optical performance.
+The shifted bit-0 approach works by projecting two low-frequency Gray-code patterns with a small spatial offset in the least significant bit and computing their difference to create a synthetic higher-frequency pattern. This strategy mitigates spatial aliasing and maintains reliable decoding accuracy under reduced projector optical performance.
 
 ---
 
