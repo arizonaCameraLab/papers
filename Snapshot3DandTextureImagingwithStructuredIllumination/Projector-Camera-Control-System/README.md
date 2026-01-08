@@ -1,9 +1,17 @@
-# Projector–Camera Control System
+# Projector–Camera Control System  
+
+---  
 
 <img src="GUI-Screenshot.png" width="100%">  
 
-A Python + PyQt GUI application for controlling an Allied Vision camera (via **VmbPy / VimbaX**) and a projector (second display in fullscreen mode), supporting structured-light pattern projection, synchronized image capture, camera–projector calibration, and offline 3D reconstruction.  
+**Figure:** Graphical user interface of the projector–camera control system.
 
+This repository provides a **Python + PyQt–based GUI application** for controlling an **Allied Vision camera** (via **VmbPy / VimbaX**) and a **projector** operating as a fullscreen secondary display. The system supports structured-light pattern projection, synchronized image capture, projector–camera calibration, and offline 3D reconstruction.
+
+The GUI enables **live camera preview**, **camera parameter control**, and **fullscreen pattern projection**, and provides a unified capture interface for both **calibration** and **reconstruction experiments**.
+
+The following diagram summarizes the **end-to-end workflow** implemented in this repository, from GUI-based data acquisition to offline calibration and 3D reconstruction.
+  
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                   Projector–Camera Control System                   │
@@ -48,15 +56,17 @@ Outputs:            │              Uses calibration results:
 
 * **GUI-based live preview** with basic camera controls (exposure, gain, pixel format, binning).
 * **Fullscreen projector pattern window** (intended for a secondary monitor / projector).
-* **Projection capture workflow**:
-
-  * Select a **pattern folder** (Gray code, shifted bit-0, or customized images)
+* **Projection–capture workflow**:
+  * Select a **pattern folder** (Gray code, shifted bit-0, or user-defined image sequences)
   * Capture **multiple frames per pattern** (burst mode), saved into a structured session directory
   * Optional **capture averaging** to reduce sensor noise
-* **Offline processing tools included**:
+* **Offline calibration** under `projector_camera_calibration/`:
+  camera and projector intrinsic/extrinsic calibration, pose estimation, and plane fitting from calibration scenes
+* **Offline 3D reconstruction** under `traditional_3d_reconstruction/`:
+  Gray-code decoding and projector–camera triangulation (extendable to other structured-light patterns)
+* **Gray-code pattern design for practical projector optics**:
+  to address the limited modulation transfer and defocus of real projector optics at high spatial   frequencies, the system employs **step-wise Gray-code patterns** (effective pixel binning) and   **shifted bit-0 variants** to mitigate spatial aliasing and improve decoding robustness.
 
-  * Gray-code decoding utilities under `traditional_3d_reconstruction/`
-  * Camera–projector calibration and reconstruction helpers under `projector_camera_calibration/`
 
 ---
 
@@ -83,7 +93,7 @@ Outputs:            │              Uses calibration results:
 * `projector_camera_calibration/`
 
   * `calib_recon_utils.py` — calibration and reconstruction utilities
-  * `proj_cam_calibration.ipynb` — camera–projector calibration notebook
+  * `proj_cam_calibration.ipynb` — projector–camera calibration notebook
 * `traditional_3d_reconstruction/`
 
   * `decode_pattern.py` — Gray-code decoding utilities
@@ -98,28 +108,46 @@ Outputs:            │              Uses calibration results:
 
 ## System Requirements
 
-### OS
+### Operating System
 
-* Windows recommended (typical VimbaX / VmbPy workflow).
-  Most code is cross-platform **except camera SDK components**.
+* **Windows is recommended**, as this is the typical and most stable workflow
+  for **VimbaX / VmbPy**–based camera control.
+* Most components of the codebase are cross-platform; however,
+  **camera SDK–dependent modules** are constrained by vendor support.
+
 
 ### Hardware
 
-* A projector or secondary display (used for fullscreen pattern projection)
-* Allied Vision camera supported by **VimbaX + VmbPy**
+* A **projector or secondary display**, used for fullscreen pattern projection
+* An **Allied Vision camera** supported by **VimbaX + VmbPy**
 
-### Python dependencies (typical)
+#### Camera API Support and Extensibility
+
+The current implementation provides a native camera control and streaming interface for **Allied Vision cameras** via **VmbPy / VimbaX**.
+
+The camera interface is designed to be **modular and extensible**. Support for additional cameras (e.g., USB, GigE, industrial, or scientific cameras) can be added by implementing a compatible streaming and control wrapper that follows the existing abstractions in:
+
+* `camera_utils.py`
+* `streaming.py`
+
+This design allows the GUI, projection workflow, and offline processing pipelines to remain unchanged when integrating new camera backends.
+
+### Python Dependencies
+
+Typical runtime dependencies include:
 
 * `PyQt5`
 * `numpy`
-* `opencv-python` (or `opencv-contrib-python` if needed)
+* `opencv-python` (or `opencv-contrib-python` if additional modules are required)
 * `matplotlib`
 * `scipy`
 * `tqdm`
 * `vmbpy`
 * *(optional, for point-cloud processing)* `open3d`
 
-> ⚠️ `vmbpy` requires a working **Allied Vision VimbaX** installation and drivers.
+> **Important:**  
+> `vmbpy` requires a working installation of **Allied Vision VimbaX** and the corresponding camera drivers.
+
 
 ---
 
@@ -142,7 +170,7 @@ If you are using VimbaX:
 
 ---
 
-## Quickstart (How you REALLY run it)
+## Quickstart
 
 ### 1) Launch the GUI
 
@@ -152,22 +180,18 @@ From the repository root:
 python main.py
 ```
 
-This opens the main window (e.g. **Projector + Camera Control System**).
-
----
+This opens the main window.
 
 ### 2) Start camera preview (live streaming)
 
 In the GUI:
 
-1. Configure exposure, gain, pixel format, and binning if needed
+1. Configure exposure time, pixel format, frame rate, pixel binning, and others if needed
 2. Click **Start Streaming**
 
 You should see the live camera feed updating in the viewer.
 
 > If streaming fails, the issue is usually related to VimbaX/VmbPy installation, camera permissions, or another application holding the camera.
-
----
 
 ### 3) Open the projector pattern window
 
@@ -186,27 +210,41 @@ Typical usage:
 
 ---
 
-## Pattern Selection (Gray code vs. customized images)
+## Pattern Selection
 
-The GUI calibration panel allows selecting a **pattern folder**.
+The GUI projection panel allows selecting a **pattern folder** that defines the
+image sequence to be projected and captured.
 
-In the embedded calibration panel (`dialogs.py`):
+In the embedded projection panel (`dialogs.py`), the following options are
+available:
 
-* **Pattern folder**: directory containing PNG/JPG patterns
-* **Browse…**: select a directory
-* **Use Customized Pattern**: enable custom pattern capture
-* **Customized Pattern Folder**: directory containing a user-defined pattern sequence
+* **Pattern folder**: directory containing PNG/JPG pattern images
+* **Browse…**: select an existing pattern directory
+* **Use Customized Pattern**: enable projection and capture of user-defined patterns
+* **Customized Pattern Folder**: directory containing a custom image sequence
 
-### Example patterns included
+### Pattern types
 
-* `gray_code_patterns/` contains:
+This repository currently provides built-in **Gray-code pattern sequences** under:
 
-  * `HorGrayCode_XX.png` and inverses
-  * `VerGrayCode_XX.png` and inverses
-  * shifted bit-0 patterns (e.g. `HorBit0_Shifted_0.png`)
-  * `WhitePattern.png`, `BlackPattern.png`
+* `gray_code_patterns/`
 
-The capture pipeline automatically enumerates and sorts valid image files in the selected folder.
+These patterns are specifically designed for projector–camera structured-light reconstruction and include:
+
+* horizontal and vertical Gray-code images with inverse patterns
+* shifted bit-0 Gray-code variants for aliasing mitigation
+* white and black reference patterns
+
+In addition to the built-in Gray-code patterns, the GUI also supports **user-defined custom pattern folders**, allowing arbitrary image sequences to be projected and captured for experimentation.
+
+### Gray-code generation, pixel binning, and shifted bit-0 variants
+
+When **Gray code** is selected as the pattern type, the GUI provides a **Generate Pattern** button that allows users to synthesize Gray-code patterns with specific design options, including:
+
+* enabling **Gray-code step / effective pixel binning**, which reduces the highest spatial frequency of the pattern sequence to better match the resolution of the camera–projector system;
+* enabling **shifted bit-0 Gray-code variants**, which improve robustness under projector defocus and limited optical modulation transfer.
+
+The shifted bit-0 approach works by projecting two low-frequency Gray-code patterns with a small spatial offset in the least significant bit and computing their difference to recover a higher-frequency effective pattern. This strategy mitigates spatial aliasing caused by projector optics and maintains reliable decoding accuracy under pixel binning or reduced projector optical performance.
 
 ---
 
@@ -215,19 +253,24 @@ The capture pipeline automatically enumerates and sorts valid image files in the
 This repository implements **two distinct capture pipelines**, each serving a different purpose:
 
 * **`calibration_capture/`**
-  Used for **camera–projector calibration** (intrinsics, extrinsics, checkerboard poses, etc.)
+  Used for **calibration** (intrinsics, extrinsics, checkerboard poses, etc.)
 
 * **`projection_exp_capture/`**
   Used for **actual measurement and reconstruction experiments**
   (capturing structured-light patterns on objects and reconstructing geometry)
 
-Understanding this separation is critical for correct usage.
-
 ---
 
-## Calibration Capture Workflow (GUI)
+## Projection and Capture Workflow (GUI)
 
-This workflow generates data for **projector–camera calibration**.
+The projection–capture workflow provides a **general mechanism** for projecting image sequences and synchronously capturing camera frames.
+
+This workflow is used for both:
+* **Calibration data acquisition**  
+* **Reconstruction experiment data acquisition**
+
+depending on the selected output folder and subsequent offline processing.
+
 
 ### 1) Open the Projection panel
 
@@ -238,14 +281,10 @@ In the main GUI, open the panel created by:
 Available controls typically include:
 
 * **Capture Save Folder**
-* **Capture ID**
 * **Burst Count**
-* **Auto Reset Index**
 * **Start Projection Capture**
 * **Average Captures**
 * **Pattern folder selectors**
-
----
 
 ### 2) Set output location
 
@@ -255,30 +294,30 @@ By default, captures are saved to:
 <repo_root>/calibration_capture
 ```
 
-(as defined in `config.py`).
-This can be changed in the GUI.
+(as defined in `config.py`). This can be changed in the GUI.
 
----
+### 3) Set Capture Save Folder and Session Index
 
-### 3) Set Capture ID and session index
+Use the **Browse** button next to **Capture Save Folder** in the GUI to select the output directory for projection capture data.
 
-* **Capture ID**: usually a date string (e.g. `12192025`)
-* Output folders are created as:
+For each projection capture run, the captured images are saved to:
 
 ```
-calibration_capture/<CaptureID>/<session_index>/
+calibration_capture/<capture_save_folder>/<session_index>/
 ```
 
-Example:
+For example, if `<capture_save_folder>` is set to `12192025`, the directory structure will be:
 
 ```
 calibration_capture/12192025/1/
-calibration_capture/12192025/29/
+calibration_capture/12192025/2/
+calibration_capture/12192025/3/
+...
 ```
 
-If **Auto Reset Index** is enabled, the session index resets when the Capture ID changes.
+The **session_index** is automatically incremented after each capture run. 
+Click **Restart Capture** to reset the session index or specify a new starting index for subsequent projection captures
 
----
 
 ### 4) Set Burst Count
 
@@ -291,8 +330,6 @@ If **Auto Reset Index** is enabled, the session index resets when the Capture ID
 ...
 ```
 
----
-
 ### 5) Start Projection Capture
 
 For each pattern:
@@ -303,46 +340,50 @@ For each pattern:
 
 ---
 
-## Output Folders (Critical)
+## Output Folders
 
-### 1) Calibration data
+### 1) Calibration capture data
 
-Generated during calibration capture:
+Generated by the GUI projection–capture workflow:  
 
 ```
 calibration_capture/<CaptureID>/<session_index>/
 ```
 
-Contains raw calibration captures and calibration results such as:
+This folder contains **raw captured images only**, which are later consumed by the calibration notebook.
+
+Calibration result files such as:
 
 * `*_camera_calibration_results.json / .npz`
 * `*_final_calibration_summary.json`
 * `*_checkerboard_poses_plotly.json`
 * `visualize_corners_projector_*.png`
 
----
+are generated **only after running** `projector_camera_calibration/proj_cam_calibration.ipynb`.
 
-### 2) Experiment data (for reconstruction)
 
-Generated during experiment capture:
+### 2) Experiment capture and reconstruction outputs
+
+Raw experiment captures are generated by the GUI and stored under:  
 
 ```
 projection_exp_capture/<CaptureID>/<session_index>/
 ```
-
-Contains object measurements and reconstruction outputs:
+3D reconstruction outputs such as:
 
 * `pointcloud_camera.npy / .ply`
 * `pointcloud_world.npy / .ply`
 * interpolated maps:
-
   * `interp_depth_cam.npy`
   * `interp_height_world.npy`
   * `interp_rgb_albedo_*.npy`
 
+are generated **only after running** `traditional_3d_reconstruction/traditional_3d_reconstruction.ipynb`.
+
+
 ---
 
-## Camera–Projector Calibration (Offline)
+## Projector–camera Calibration
 
 Calibration must be completed **before reconstruction**.
 
@@ -356,20 +397,21 @@ Typical steps:
 
 1. Select a calibration session folder, e.g.
 
-   ```
-   calibration_capture/12192025/29/
-   ```
+   ```bash
+   calibration_capture/12192025
+   ```  
 2. Perform camera calibration (intrinsics, distortion)
-3. Perform projector calibration and solve camera–projector geometry
+3. Perform projector calibration and solve projector–camera geometry
 4. Export calibration summaries:
-
    * `<CaptureID>_camera_calibration_results.json / .npz`
    * `<CaptureID>_final_calibration_summary.json`
    * `<CaptureID>_checkerboard_poses_plotly.json`
 
+In addition to intrinsic and extrinsic calibration, the calibration notebook also **estimates an average calibration plane** by fitting a 3D plane model to the reconstructed checkerboard observations, which is useful for geometric validation and downstream analysis.
+
 ---
 
-## Offline Reconstruction (How to run it)
+## 3d Reconstruction
 
 Offline reconstruction uses **experiment data**, not calibration data.
 
@@ -399,6 +441,8 @@ Open:
 > **Key dependency**:
 > Calibration parameters come from `calibration_capture/`,
 > while reconstruction images come from `projection_exp_capture/`.
+
+Currently, the reconstruction pipeline implements **Gray-code–based structured-light reconstruction**. The design is modular and can be extended to support other pattern types, such as **sinusoidal fringe pattern**, by adding the corresponding decoding and phase-unwrapping modules.
 
 ---
 
