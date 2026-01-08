@@ -1,4 +1,4 @@
-````markdown
+
 # Projector–Camera RGB Reconstruction (Structured Illumination)
 
 This repository implements a projector–camera structured-illumination pipeline
@@ -29,7 +29,7 @@ projector–camera model (DPCM)** and a neural reconstruction framework.
 ├── Data_comp_ref.ipynb           # Data vs. reference comparison notebook
 ├── Proj_cam_RGB.ipynb            # Main notebook (entry point)
 └── calibrated_pattern_coeff.npy  # Calibrated projector pattern coefficients
-````
+```
 
 ---
 
