@@ -1,6 +1,9 @@
 # Projector–Camera Control System
 
+<img src="GUI-Screenshot.png" width="100%">  
+
 A Python + PyQt GUI application for controlling an Allied Vision camera (via **VmbPy / VimbaX**) and a projector (second display in fullscreen mode), supporting structured-light pattern projection, synchronized image capture, camera–projector calibration, and offline 3D reconstruction.  
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                   Projector–Camera Control System                   │
@@ -38,13 +41,14 @@ Outputs:            │              Uses calibration results:
                                    - pointcloud_camera / pointcloud_world
                                    - interpolated maps (.npy)
 ```
+
 ---
 
 ## Highlights
 
 * **GUI-based live preview** with basic camera controls (exposure, gain, pixel format, binning).
 * **Fullscreen projector pattern window** (intended for a secondary monitor / projector).
-* **Calibration capture workflow**:
+* **Projection capture workflow**:
 
   * Select a **pattern folder** (Gray code, shifted bit-0, or customized images)
   * Capture **multiple frames per pattern** (burst mode), saved into a structured session directory
@@ -223,9 +227,9 @@ Understanding this separation is critical for correct usage.
 
 ## Calibration Capture Workflow (GUI)
 
-This workflow generates data for **camera–projector calibration**.
+This workflow generates data for **projector–camera calibration**.
 
-### 1) Open the Calibration / Projection panel
+### 1) Open the Projection panel
 
 In the main GUI, open the panel created by:
 
@@ -239,7 +243,7 @@ Available controls typically include:
 * **Auto Reset Index**
 * **Start Projection Capture**
 * **Average Captures**
-* Pattern folder selectors
+* **Pattern folder selectors**
 
 ---
 
