@@ -16,16 +16,16 @@ The following diagram summarizes the **end-to-end workflow** implemented in this
 └───────────────────────────────────┘
              │
              ▼
-      [GUI] python main.py
+       [GUI] python main.py
              │
              ▼
-      Start Streaming (Live Preview)
+       Start Streaming
              │
              ▼
-   Open Projector Window (Fullscreen)
+       Open Projector Window 
              │
              ▼
-        Choose Pipeline
+       Choose Pipeline
      ┌───────┴───────────────────────────────┐
      │                                       │
      ▼                                       ▼
