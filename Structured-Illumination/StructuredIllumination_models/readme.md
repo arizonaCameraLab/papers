@@ -149,16 +149,7 @@ If you use this code or its associated ideas in academic work, please cite the
 corresponding publication or thesis:
 
 ```bibtex
-@phdthesis{Dong2026DPCM,
-  author       = {Zhipeng Dong},
-  title        = Snapshot 3D and Texture Imaging with Structured Illumination},
-  school       = {University of Arizona},
-  year         = {2026}
-}
-```
-
-If a journal or conference paper is preferred, please replace the above entry
-with the appropriate citation.
+TBD (Later after publication)
 
 ---
 
