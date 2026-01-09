@@ -18,7 +18,7 @@ from scipy.spatial import cKDTree
 from scipy.spatial import Delaunay
 
 
-# --- Helper function to extract numbers from filename for sorting ---
+# Helper function to extract numbers from filename for sorting 
 def extract_number(filename):
     """
     Extracts the first sequence of digits found in the filename's base name.
@@ -43,9 +43,6 @@ def extract_number(filename):
         # If no digits are found in the filename, return 0
         # Files without numbers will typically be sorted first
         return 0
-
-
-# --- End of extract_number function ---
 
 
 def load_gray_float32(filename, stretch=True, threshold=False):
@@ -636,9 +633,7 @@ def plot_selected_and_pca_planes_plotly(
 
     fig2 = go.Figure()
 
-    # =====================================================
     # Selected individual boards + normals
-    # =====================================================
     for i in selected_indices:
         O = board_origins[i]
         Rw = board_rotations[i]
@@ -712,9 +707,7 @@ def plot_selected_and_pca_planes_plotly(
             )
         )
 
-    # =====================================================
     # PCA Averaged Planes + Normals
-    # =====================================================
     normal_scale = square_size * 3  # length of visualization normal vectors
 
     for g_idx, (avg_o, avg_n) in enumerate(zip(pca_origins, pca_normals)):
@@ -796,9 +789,7 @@ def plot_selected_and_pca_planes_plotly(
             )
         )
 
-    # =====================================================
     # World coordinate axes (RGB)
-    # =====================================================
     axis_len = square_size * 5
     axes_dirs = np.eye(3) * axis_len
     axes_colors = ["red", "green", "blue"]
@@ -835,9 +826,7 @@ def plot_selected_and_pca_planes_plotly(
             )
         )
 
-    # =====================================================
     # update Layout
-    # =====================================================
     fig2.update_layout(
         title="Selected & Averaged Checkerboard Planes (with Normals)",
         scene=dict(
@@ -863,10 +852,8 @@ def plot_selected_and_pca_planes_plotly(
     return fig2
 
 
-# -------------------------------
-# 2. Triangulate in Camera Frame
-#   ⚠️ Use normalized coords + [R|t]
-# -------------------------------
+# Triangulate in Camera Frame
+# Use normalized coords + [R|t]
 def triangulate_cam_frame(
     projector_coords, mask_valid, K_c, dist_c, K_p, dist_p, R_cp, t_cp
 ):
@@ -886,24 +873,24 @@ def triangulate_cam_frame(
 
     mask_flat = mask_valid.reshape(-1) > 0
 
-    # --- normalized coords: (N, 1, 2) (undistort + K^-1)---
+    # normalized coords: (N, 1, 2) (undistort + K^-1)
     cam_norm = cv2.undistortPoints(cam_pix, K_c, dist_c)  # (N,1,2)
     proj_norm = cv2.undistortPoints(proj_pix, K_p, dist_p)  # (N,1,2)
 
     cam_norm = cam_norm.reshape(-1, 2).T[:, mask_flat]  # (2, N_valid)
     proj_norm = proj_norm.reshape(-1, 2).T[:, mask_flat]  # (2, N_valid)
 
-    # --- projection matrices using [R|t] ---
+    # projection matrices using [R|t]
     P1 = np.hstack(
         [np.eye(3, dtype=np.float32), np.zeros((3, 1), dtype=np.float32)]
     )  # camera
     P2 = np.hstack([R_cp.astype(np.float32), t_cp.astype(np.float32)])  # projector
 
-    # --- trangualation in homogeneous coordinates ---
+    # trangualation in homogeneous coordinates
     X_h = cv2.triangulatePoints(P1, P2, cam_norm, proj_norm)  # (4, N)
     X = X_h[:3, :] / X_h[3:, :]  # (3, N)
 
-    # --- refill to (H*W, 3) with NaN ---
+    # refill to (H*W, 3) with NaN
     pts = np.zeros((H * W, 3), dtype=np.float32)
     pts[:] = np.nan
     pts[mask_flat] = X.T
@@ -911,10 +898,8 @@ def triangulate_cam_frame(
     return pts.reshape(H, W, 3)
 
 
-# -------------------------------
-# 3. Camera → World
-#    X_world = R_cw * X_cam + C_cam_world
-# -------------------------------
+# Camera → World
+#   X_world = R_cw * X_cam + C_cam_world
 def cam_to_world(points_cam, mask_valid, R_cam_to_world, cam_pos_world):
     """
     points_cam:   (H, W, 3)
@@ -1050,21 +1035,21 @@ def median_filter_in_mask(points_filled, valid_mask, ksize=3):
     # save original Z
     Z_original = Z.copy()
 
-    # 1) Set pixels outside mask to +inf
+    # Set pixels outside mask to +inf
     Z_work = Z.copy()
     Z_work[~vm] = np.inf
 
-    # 2) median filter (OpenCV supports inf)
+    # median filter (OpenCV supports inf)
     Z_med = cv2.medianBlur(Z_work.astype(np.float32), ksize)
 
-    # 3) Restore outside mask to NaN
+    # Restore outside mask to NaN
     Z_med[~vm] = np.nan
 
-    # 4) If any valid pixel became inf due to sorting, restore original value
+    # If any valid pixel became inf due to sorting, restore original value
     bad_inside = vm & np.isinf(Z_med)
     Z_med[bad_inside] = Z_original[bad_inside]
 
-    # 5) Combine results
+    # Combine results
     points_smoothed = points_filled.copy()
     points_smoothed[..., 2] = Z_med
 
@@ -1135,9 +1120,7 @@ def numpy_to_o3d_pointcloud(points, valid_mask=None, rgb_image=None, gray_image=
     H, W, _ = points.shape
     pts = points.reshape(-1, 3)  # flatten to (H*W, 3)
 
-    # ----------------------------------------------------------
-    # 1. Construct validity mask
-    # ----------------------------------------------------------
+    # Construct validity mask
     if valid_mask is not None:
         # mask > 0 means valid
         mask = valid_mask.reshape(-1) > 0
@@ -1149,15 +1132,11 @@ def numpy_to_o3d_pointcloud(points, valid_mask=None, rgb_image=None, gray_image=
 
     pts = pts[mask]  # (N,3) valid points
 
-    # ----------------------------------------------------------
-    # 2. Create Open3D point cloud
-    # ----------------------------------------------------------
+    # Create Open3D point cloud
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pts.astype(np.float64))
 
-    # ----------------------------------------------------------
-    # 3. Handle colors (optional)
-    # ----------------------------------------------------------
+    # Handle colors (optional)
     if rgb_image is not None:
         # reshape and pick only valid pixels
         rgb = rgb_image.reshape(-1, 3)[mask].astype(np.float32) / 255.0
@@ -1268,17 +1247,13 @@ def preprocess_pointcloud(
     print("Input point cloud:", pcd)
     print("Original number of points:", np.asarray(pcd.points).shape[0])
 
-    # --------------------------------------------------
-    # 1. VOXEL DOWNSAMPLING
-    # --------------------------------------------------
+    # VOXEL DOWNSAMPLING
     if voxel_size is not None and voxel_size > 0:
         pcd = pcd.voxel_down_sample(voxel_size=voxel_size)
         print(f"[Voxel Downsample] voxel_size={voxel_size}")
         print("  #points:", np.asarray(pcd.points).shape[0])
 
-    # --------------------------------------------------
-    # 2. STATISTICAL OUTLIER REMOVAL (SOR)
-    # --------------------------------------------------
+    # STATISTICAL OUTLIER REMOVAL (SOR)
     pcd, ind = pcd.remove_statistical_outlier(
         nb_neighbors=stat_nb_neighbors, std_ratio=stat_std_ratio
     )
@@ -1287,9 +1262,7 @@ def preprocess_pointcloud(
     )
     print("  #points:", np.asarray(pcd.points).shape[0])
 
-    # --------------------------------------------------
-    # 3. RADIUS OUTLIER REMOVAL (optional)
-    # --------------------------------------------------
+    # RADIUS OUTLIER REMOVAL (optional)
     if rad_nb_points is not None and rad_radius is not None:
         pcd, ind = pcd.remove_radius_outlier(nb_points=rad_nb_points, radius=rad_radius)
         print(
@@ -1297,9 +1270,7 @@ def preprocess_pointcloud(
         )
         print("  #points:", np.asarray(pcd.points).shape[0])
 
-    # --------------------------------------------------
-    # 4. NORMAL ESTIMATION (optional)
-    # --------------------------------------------------
+    # NORMAL ESTIMATION (optional)
     if estimate_normals:
         print("[Normal Estimation]")
         print(f"  search radius={normal_radius}, max_nn={normal_max_nn}")
@@ -1391,7 +1362,7 @@ def build_preprocessed_pointcloud_from_grid(
         finite_mask = np.isfinite(points).all(axis=2)
         valid_mask = finite_mask.astype(np.uint8)
 
-    # 1) Fill NaNs in Z inside valid region using RBF
+    # Fill NaNs in Z inside valid region using RBF
     points_filled = inpaint_height_map_cv(
         points=points,
         valid_mask=valid_mask,
@@ -1399,7 +1370,7 @@ def build_preprocessed_pointcloud_from_grid(
         method=method,
     )
 
-    # 2) Convert to Open3D point cloud (uses valid_mask & removes any residual NaNs)
+    # Convert to Open3D point cloud (uses valid_mask & removes any residual NaNs)
     pcd = numpy_to_o3d_pointcloud(
         points_filled,
         valid_mask=valid_mask,
@@ -1407,7 +1378,7 @@ def build_preprocessed_pointcloud_from_grid(
         gray_image=gray_image,
     )
 
-    # 3) Preprocess in Open3D
+    # Preprocess in Open3D
     pcd_clean = preprocess_pointcloud(
         pcd,
         voxel_size=voxel_size,
@@ -1806,9 +1777,7 @@ def json_loader(file_path: str) -> dict:
     return result
 
 
-# -------------------------------
 # Load calibration JSON
-# -------------------------------
 def load_calibration(json_path):
     data = json_loader(json_path)
 
@@ -1865,9 +1834,7 @@ def save_pointcloud_ply(
     H, W, _ = points.shape
     pts = points.reshape(-1, 3)
 
-    # ------------------------------
     # Build mask
-    # ------------------------------
     mask = np.ones((H * W,), dtype=bool)
 
     # mask from user
@@ -1879,9 +1846,7 @@ def save_pointcloud_ply(
 
     pts_valid = pts[mask]  # (N,3)
 
-    # ------------------------------
     # Handle colors
-    # ------------------------------
     colors = None
 
     if rgb_image is not None:
@@ -1894,9 +1859,7 @@ def save_pointcloud_ply(
         g = np.clip(g, 0, 255).astype(np.uint8)
         g = g[mask]
         colors = np.stack([g, g, g], axis=1)
-    # ------------------------------
     # Write PLY
-    # ------------------------------
     with open(filename, "w") as f:
 
         # header
@@ -1937,9 +1900,7 @@ def plot_pointcloud_plotly(
     plot_width=800,
     plot_height=600,
 ):
-    # --------------------------------------------
     # Reshape point cloud to (N,3)
-    # --------------------------------------------
     if points_3d.ndim == 3:
         H, W, _ = points_3d.shape
         pts = points_3d.reshape(-1, 3)
@@ -1948,9 +1909,7 @@ def plot_pointcloud_plotly(
 
     N = pts.shape[0]
 
-    # --------------------------------------------
     # Mask
-    # --------------------------------------------
     mask = np.ones((N,), dtype=bool)
 
     if valid_mask is not None:
@@ -1960,9 +1919,7 @@ def plot_pointcloud_plotly(
 
     pts_valid = pts[mask]
 
-    # --------------------------------------------
     # Colors
-    # --------------------------------------------
     if rgb is not None:
         rgb = rgb.reshape(-1, 3)[mask]
         colors = (
@@ -1984,9 +1941,7 @@ def plot_pointcloud_plotly(
     else:
         colors = "rgb(0.1216, 0.4667, 0.7059)"  # or a list same length
 
-    # --------------------------------------------
     # Plotly scatter3d
-    # --------------------------------------------
     fig = go.Figure(
         data=[
             go.Scatter3d(
@@ -2049,9 +2004,7 @@ def show_image_and_heightmap(
             "Height Map (z in World Coordinates)",
         ]
 
-    # -----------------------------
     # Extract height (world Z)
-    # -----------------------------
     if point_cloud.ndim != 3 or point_cloud.shape[2] != 3:
         height_map = point_cloud.copy()
     else:
@@ -2060,9 +2013,7 @@ def show_image_and_heightmap(
     if mask_valid is not None:
         height_map[mask_valid == 0] = np.nan
 
-    # -----------------------------
     # Figure layout (KEY CHANGE)
-    # -----------------------------
     fig = plt.figure(figsize=(12, 6))
     gs = GridSpec(1, 3, width_ratios=[1, 1, 0.05], wspace=0.3)  # colorbar 单独一列
 
@@ -2070,9 +2021,7 @@ def show_image_and_heightmap(
     ax_h = fig.add_subplot(gs[0, 1])
     cax_h = fig.add_subplot(gs[0, 2])
 
-    # -----------------------------
     # Left: image
-    # -----------------------------
     ax_img.set_title(titles[0])
 
     if image.dtype == np.uint8:
@@ -2102,9 +2051,7 @@ def show_image_and_heightmap(
     # colorbar for reflectance is optional, so commented out
     # fig.colorbar(im_img, ax=ax_img, fraction=0.046)
 
-    # -----------------------------
     # Right: height map
-    # -----------------------------
     ax_h.set_title(titles[1])
     if extent[1] is None:
         im_h = ax_h.imshow(
@@ -2198,20 +2145,20 @@ def process_bit0_numeric_files_3d_recon(root_dir, pairs, bit0_synthetic_flag=Tru
     # sort by number
     number_files.sort(key=lambda x: x[0])
 
-    # 2. skip 00 and 01
+    # skip 00 and 01
     filtered = [(n, f) for (n, f) in number_files if n >= 2]
 
     if len(filtered) < 4:
         raise RuntimeError("Need at least 4 numeric files (>=02).")
 
-    # 3. Split into two equal groups
+    # Split into two equal groups
     total = len(filtered)
     half = total // 2
 
     groupA = filtered[:half]
     groupB = filtered[half:]
 
-    # 4. last two files from each group
+    # last two files from each group
     last_A = groupA[-2:]
     last_B = groupB[-2:]
     target_files = last_A + last_B  # 共 4 个
@@ -2220,18 +2167,18 @@ def process_bit0_numeric_files_3d_recon(root_dir, pairs, bit0_synthetic_flag=Tru
     for _, fname in target_files:
         print("  ", fname)
 
-    # 5. Create org_bit0 directory
+    # Create org_bit0 directory
     org_dir = os.path.join(root_dir, "org_bit0")
     os.makedirs(org_dir, exist_ok=True)
 
-    # 6. Move original files to org_bit0
+    # Move original files to org_bit0
     for _, fname in target_files:
         src = os.path.join(root_dir, fname)
         dst = os.path.join(org_dir, fname)
         print(f"Moving {src} -> {dst}")
         shutil.move(src, dst)
 
-    # 7. read pattern pairs
+    # read pattern pairs
     patterns = {}
     for key_prepare in [
         "HorBit0_Shifted_0",
@@ -2246,7 +2193,7 @@ def process_bit0_numeric_files_3d_recon(root_dir, pairs, bit0_synthetic_flag=Tru
         pattern_file = os.path.join(root_dir, f"{key_prepare}_00.png")
         patterns[key_prepare] = load_gray_float32(pattern_file)
 
-    # 8. Generate abs diff images (in the same order as recorded)
+    # Generate abs diff images (in the same order as recorded)
     for pair, (_, out_filename) in zip(pairs, target_files):
         key1, key2 = pair
         img1 = patterns[key1]

@@ -37,7 +37,7 @@ class ProfilePlotWindow(QWidget):
         self.setWindowTitle("Profile Plot")
         self.init_ui()
 
-        self.view.enable_profile_mode(True)  # 确保可以立即画线
+        self.view.enable_profile_mode(True)  # make sure profile mode is enabled immediately
         self.view.profile_updated.connect(self.update_plot)
 
     def init_ui(self):
@@ -77,12 +77,12 @@ class ProfilePlotWindow(QWidget):
         self.ax.clear()
         self.ax.plot(profile_values, color="black", linewidth=1.5)
 
-        # ⬇️ 加上标题与坐标轴标签
+        # add title and labels
         self.ax.set_title("1D Intensity Profile")
         self.ax.set_xlabel("Distance (pixels)")
         self.ax.set_ylabel("Gray Level")
 
-        # ⬇️ 可选：显示网格
+        # show grid
         self.ax.grid(True, linestyle="--", alpha=0.5)
 
         self.canvas.draw()
@@ -96,14 +96,14 @@ class ProfilePlotWindow(QWidget):
             print(f"Invalid coordinates: {e}")
 
     def closeEvent(self, event):
-        """当关闭 Profile 窗口时，退出 Profile 模式"""
+        """exit profile mode, when closing the Profile window."""
         self.view.enable_profile_mode(False)
         self.deleteLater()
         event.accept()
 
     def clear_profile(self):
         """Clear profile line and plot."""
-        self.view.enable_profile_mode(True)  # ⬅️ 保持在 profile 模式
+        self.view.enable_profile_mode(True)  # keep in profile mode
         self.view.profile_line.setVisible(False)
         for h in [
             self.view.handle_start,

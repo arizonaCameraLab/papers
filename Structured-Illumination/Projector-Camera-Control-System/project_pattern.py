@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QApplication, QLabel
 from PyQt5.QtGui import QPixmap, QPainter, QColor, QKeyEvent, QMouseEvent
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 
-# 用于保存所有活跃的 ImageViewer 实例，防止被垃圾回收
+# use a list to hold references to live viewers, preventing garbage collection
 _live_viewers = []
 
 
@@ -33,88 +33,6 @@ def prepare_save_folder(folder):
     else:
         os.makedirs(folder)
 
-
-# def generate_gray_code_patterns_opencv(
-#     width, height, save_folder, inverse=False, step=1
-# ):
-#     """
-#     Generate horizontal & vertical Gray Code patterns (with optional inverse),
-#     plus white/black images, using OpenCV's structured_light.GrayCodePattern.
-#     Filenames:
-#       HorGrayCode_01.png … HorGrayCode_NN.png
-#       HorGrayCode_01_Inverse.png … (if inverse=True)
-#       VerGrayCode_01.png … VerGrayCode_MM.png
-#       VerGrayCode_01_Inverse.png … (if inverse=True)
-#       WhitePattern.png, BlackPattern.png
-#     """
-#     file_counter = 0
-#     # 1) 清空并重建输出文件夹
-#     prepare_save_folder(save_folder)
-
-#     # 2) 计算“码元”网格尺寸
-#     # gc_w = (width - 1) // step + 1
-#     # gc_h = (height - 1) // step + 1
-#     gc_h = int((height - 1) / step) + 1
-#     gc_w  = int((width  - 1) / step) + 1
-
-#     # 3) 创建 GrayCodePattern 生成器并获取所有位平面
-#     graycode = cv2.structured_light.GrayCodePattern.create(gc_w, gc_h)
-#     _, patterns = graycode.generate()
-#     # 此处 patterns 长度 = 2*(num_hor_bits + num_ver_bits)
-
-#     # 4) 计算水平/垂直位平面数量
-#     num_hor_bits = int(np.ceil(np.log2(gc_w)))
-#     num_ver_bits = int(np.ceil(np.log2(gc_h)))
-#     print("hor_bits:", num_hor_bits, "ver_bits:", num_ver_bits)
-#     assert len(patterns) == 2 * (
-#         num_hor_bits + num_ver_bits
-#     ), "Expected pattern count = 2*(hor_bits+ver_bits)"
-
-#     # 5) 扩展函数：把小码元图扩展到全分辨率
-#     def expand(pat):
-#         big = np.repeat(np.repeat(pat, step, axis=0), step, axis=1)
-#         return big[:height, :width].astype(np.uint8)
-
-#     # 6) 生成并保存水平 Gray code
-#     for i in range(num_hor_bits):
-#         # 每个位平面有两张：patterns[2*i] 正图，patterns[2*i+1] 反图
-#         p = expand(patterns[2 * i])
-#         fname = os.path.join(save_folder, f"HorGrayCode_{i+1:02d}.png")
-#         cv2.imwrite(fname, p)
-#         file_counter += 1
-#         if inverse:
-#             ip = expand(patterns[2 * i + 1])
-#             cv2.imwrite(
-#                 os.path.join(save_folder, f"HorGrayCode_{i+1:02d}_Inverse.png"), ip
-#             )
-#             file_counter += 1
-
-#     # 7) 生成并保存垂直 Gray code
-#     offset = 2 * num_hor_bits
-#     for j in range(num_ver_bits):
-#         p = expand(patterns[offset + 2 * j])
-#         fname = os.path.join(save_folder, f"VerGrayCode_{j+1:02d}.png")
-#         cv2.imwrite(fname, p)
-#         file_counter += 1
-#         if inverse:
-#             ip = expand(patterns[offset + 2 * j + 1])
-#             cv2.imwrite(
-#                 os.path.join(save_folder, f"VerGrayCode_{j+1:02d}_Inverse.png"), ip
-#             )
-#             file_counter += 1
-
-#     # 8) 生成白/黑图
-#     white = np.ones((height, width), dtype=np.uint8) * 255
-#     black = np.zeros((height, width), dtype=np.uint8)
-#     cv2.imwrite(os.path.join(save_folder, "WhitePattern.png"), white)
-#     cv2.imwrite(os.path.join(save_folder, "BlackPattern.png"), black)
-#     file_counter += 2
-#     if file_counter == graycode.getNumberOfPatternImages() + 2:
-#         print(f"Generated {file_counter} images in {save_folder}")
-#     else:
-#         print(
-#             f"Warning: {file_counter} images generated, but expected {graycode.getNumberOfPatternImages()+2}"
-#         )
 
 def generate_gray_code_patterns_opencv(
     width,
@@ -271,12 +189,13 @@ def generate_gray_code_patterns_3dscanning(
     step : int, optional
         Logic-pixel pitch (default 1 → 最细条纹=1 px).
     bit_order : {"MSB","LSB"}
-        生成文件编号的意义；"MSB" 则输出顺序从最高位开始。
+        MSB means saving from most significant bit to least significant bit.
+        LSB means saving from least significant bit to most significant bit.  
     """
-    # 1. Prepare output folder
+    # Prepare output folder
     prepare_save_folder(save_folder)
 
-    # 2. Determine bit count and generated square size
+    # Determine bit count and generated square size
     nbits = math.ceil(math.log2(max(width, height)))
     gen_size = 1 << nbits
     print(f"Gray code size: {gen_size}x{gen_size} ({nbits} bits)")
@@ -284,23 +203,23 @@ def generate_gray_code_patterns_3dscanning(
     print(f"Gray code size: {width}x{height} ({width/step} bits)")
     print(f"Gray code order: {bit_order.upper()}")
 
-    # 3. Generate full-square Gray code (with built-in inverse interleaved)
+    # Generate full-square Gray code (with built-in inverse interleaved)
     pattern = cv2.structured_light_GrayCodePattern.create(gen_size, gen_size)
     ok, imgs = pattern.generate()
     if not ok:
         raise RuntimeError("OpenCV failed to generate GrayCodePattern")
     # imgs: [bit0, inv0, bit1, inv1, ..., bitN-1, invN-1]
 
-    # 4. Split original and inverse planes
+    # Split original and inverse planes
     orig_planes = imgs[0::2]
     inv_planes = imgs[1::2]
 
-    # 5. Order bits for saving
+    # Order bits for saving
     indices = list(range(nbits))
     if bit_order.upper() == "LSB":
         indices = indices[::-1]
 
-    # 6. Helper to upscale and crop
+    # Helper to upscale and crop
     def _process_plane(plane):
         # upscale by step in both dims
         if step != 1:
@@ -311,7 +230,7 @@ def generate_gray_code_patterns_3dscanning(
         left = (w0 - width) // 2
         return plane[top : top + height, left : left + width]
 
-    # 7. Save horizontal patterns (vertical stripes encode X)
+    # Save horizontal patterns (vertical stripes encode X)
     for idx, b in enumerate(indices, start=1):
         img_f = _process_plane(orig_planes[b])
         fname = f"HorGrayCode_{idx:02d}.png"
@@ -321,7 +240,7 @@ def generate_gray_code_patterns_3dscanning(
             fname_inv = f"HorGrayCode_{idx:02d}_Inverse.png"
             cv2.imwrite(os.path.join(save_folder, fname_inv), img_inv)
 
-    # 8. Save vertical patterns (horizontal stripes encode Y)
+    # Save vertical patterns (horizontal stripes encode Y)
     for idx, b in enumerate(indices, start=1):
         # transpose to get horizontal stripes from column code
         img_f = _process_plane(orig_planes[b].T)
@@ -332,7 +251,7 @@ def generate_gray_code_patterns_3dscanning(
             fname_inv = f"VerGrayCode_{idx:02d}_Inverse.png"
             cv2.imwrite(os.path.join(save_folder, fname_inv), img_inv)
 
-    # 9. Save reference white/black
+    # Save reference white/black
     white = np.full((height, width), 255, np.uint8)
     black = np.zeros((height, width), np.uint8)
     cv2.imwrite(os.path.join(save_folder, "WhitePattern.png"), white)
@@ -341,7 +260,7 @@ def generate_gray_code_patterns_3dscanning(
 
 
 class ImageViewer(QLabel):
-    # ▶ 当一张新图案真正绘制完成后，发射其文件路径
+    # send its path to receiver, when a new pattern is fully drawn
     image_changed = pyqtSignal(str)
 
     def __init__(
@@ -381,7 +300,7 @@ class ImageViewer(QLabel):
         self.move(screen_geometry.x(), screen_geometry.y())
         self.setAlignment(Qt.AlignCenter)
         self.showFullScreen()
-        # 关闭时让 Qt 自动 delete 对象，避免 GPU/内存泄漏
+        # make Qt auto-delete the object on close to prevent GPU/memory leaks
         self.setAttribute(Qt.WA_DeleteOnClose)
 
         self.show_image()
@@ -418,7 +337,7 @@ class ImageViewer(QLabel):
                 painter.end()
                 self.setPixmap(bg)
 
-            # —— 图案显示完毕，通知监听者 —— #
+            # emit signal with current image path
             self.image_changed.emit(self.image_paths[self.current_index])
 
     def advance_image(self):
@@ -504,7 +423,7 @@ def launch_viewer(
     :param capture_condition_fn: Callback function for capture mode. Should return True when the condition is met to switch images.
     """
     supported_exts = [".png", ".jpg", ".jpeg", ".bmp", ".tif"]
-    # 自定义顺序：White → Black → HorGrayCode → VerGrayCode → 其他
+    # custom sort: White → Black → HorGrayCode → VerGrayCode → others
     raw_files = [
         os.path.join(image_folder, f)
         for f in os.listdir(image_folder)
@@ -523,7 +442,7 @@ def launch_viewer(
         if name.startswith("VerGrayCode_"):
             idx = int(name.split("_")[1])
             return (3, idx)
-        # 其它文件放最后，按名字再排一次
+        # others go last, sorted by name
         return (4, name)
 
     image_files = sorted(raw_files, key=pattern_key)
@@ -531,7 +450,7 @@ def launch_viewer(
         print("No images found in", image_folder)
         return
 
-    # 如果没有已有 QApplication，就新建一个并在结束时执行事件循环
+    # if there is no existing QApplication, create one and enter event loop at the end
     app = QApplication.instance()
     own_app = False
     if app is None:
@@ -539,7 +458,7 @@ def launch_viewer(
         own_app = True
 
     screens = app.screens()
-    if target_screen >= len(screens):  # 超界回退主屏
+    if target_screen >= len(screens):  # reset to primary screen when out of range
         print(f"Screen index {target_screen} out of range, use 0")
         target_screen = 0
 
@@ -554,18 +473,17 @@ def launch_viewer(
         capture_condition_fn=capture_condition_fn,
     )
     viewer.show()
-    # ────────────────────────────────────────────────────────────────────────
-    # 把 viewer 放到全局列表里，保持引用，防止被垃圾回收
-    _live_viewers.append(viewer)
-    # ────────────────────────────────────────────────────────────────────────
 
-    # 仅当我们自己创建了 QApplication 实例时才进入 exec_()
+    # put the viewer into the global list to keep a reference and prevent garbage collection
+    _live_viewers.append(viewer)
+
+    # only if we created the QApplication instance ourselves, enter exec_()
     if own_app:
         sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
-    # 如果模块直接运行，就用预览模式启动
+    # if run this script as main, launch in preview mode
     DEFAULT_SAVE_FOLDER = os.path.join(os.getcwd(), "CodePatterns")
     WIDTH = 1280
     HEIGHT = 720
@@ -576,21 +494,9 @@ if __name__ == "__main__":
     LOOP = True
     DISPLAY_MODE = "preview"
 
-    # 生成 Gray Code 图案
     generate_gray_code_patterns_opencv(
         WIDTH,
         HEIGHT,
         DEFAULT_SAVE_FOLDER,
         inverse=INVERSE_IMAGES,
     )
-
-    # 启动全屏预览（launch_viewer 内部会创建 QApplication 并进入事件循环）
-    # launch_viewer(
-    #     image_folder=DEFAULT_SAVE_FOLDER,
-    #     target_screen=DEFAULT_SCREEN_NUMBER,
-    #     loop=LOOP,
-    #     scale=SCALE_TO_FULLSCREEN,
-    #     bg_gray=BG_GRAY,
-    #     mode=DISPLAY_MODE,
-    #     capture_condition_fn=None,
-    # )

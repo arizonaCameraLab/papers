@@ -4,21 +4,21 @@ from vmbpy import PixelFormat  # Pixel format definitions from Vimba SDK
 import os
 from PyQt5.QtWidgets import QApplication
 
-# === Camera and Exposure Settings ===
+# Camera and Exposure Settings
 opencv_display_format = PixelFormat.Mono8  # Use Mono8 for OpenCV display compatibility
 
 MIN_EXPOSURE = 12  # Minimum exposure time in microseconds
 MAX_EXPOSURE = 9999995  # Maximum exposure time in microseconds
 SLIDER_MAX = 1000  # Max value of the exposure slider in UI
 
-# === Default Camera Feature Dictionary ===
+# Default Camera Feature Dictionary
 # These values are applied to the camera when initialized or reconfigured
 features_to_update = {
     "ExposureAuto": "Off",  # Disable automatic exposure
     "ExposureTime": 1000,  # Initial exposure time in microseconds
     "GainAuto": "Off",  # Disable automatic gain control
     "Gain": 0.0,  # Initial gain
-    # --- ROI offsets & binning (added) ---
+    # ROI offsets & binning (added)
     "BinningHorizontalMode": "Sum",  # Enum: "Average" / "Sum"
     "BinningHorizontal": 3,  # int >= 1
     "BinningVerticalMode": "Sum",  # Enum: "Average" / "Sum"
@@ -48,7 +48,7 @@ features_to_update = {
 
 output_file = "camera_features.txt"  # File to save updated camera feature settings
 
-# === Default Projector Calibration Configuration ===
+# Default Projector Calibration Configuration
 # These values control how the projector behaves during structured light capture
 default_projector_config = {
     "burst_count": 1,  # Number of frames to average or store per projection
@@ -79,5 +79,5 @@ except Exception:
     print("Error initializing projector width and height. Using defaults.")
     # Fallback to default values if screen information is unavailable
     pass
-# === Other Global Settings ===
+# Other Global Settings 
 DEBOUNCE_TIME = 0.5  # Debounce delay for 'p' keypress (seconds)

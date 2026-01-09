@@ -117,11 +117,9 @@ class Handler(QObject):
                     np_img = frame.as_numpy_ndarray().copy()
                     cv_img = np_img  # default assignment
 
-                    # --------------------------------------------
                     # Auto-detect and handle format dynamically
-                    # --------------------------------------------
                     if "BAYER" in fmt_name:
-                        # --- Color (Bayer mosaic) ---
+                        # Color (Bayer mosaic)
                         if "RG" in fmt_name:
                             cv_img = cv2.cvtColor(np_img, cv2.COLOR_BAYER_RG2RGB)
                         elif "BG" in fmt_name:
@@ -134,13 +132,13 @@ class Handler(QObject):
                             # Unknown Bayer type — use fallback
                             cv_img = np_img
                     elif "RGB" in fmt_name:
-                        # --- True RGB formats ---
+                        # True RGB formats
                         cv_img = np_img
                     elif "BGR" in fmt_name:
-                        # --- Already BGR format ---
+                        # Already BGR format 
                         cv_img = cv2.cvtColor(np_img, cv2.COLOR_BGR2RGB)
                     else:
-                        # --- Monochrome path ---
+                        # Monochrome path 
                         if pix_fmt != opencv_display_format:
                             try:
                                 display = frame.convert_pixel_format(
@@ -156,7 +154,7 @@ class Handler(QObject):
                     print(f"[Handler] Frame conversion failed ({fmt_name}): {e}")
                     cv_img = frame.as_opencv_image().copy()
 
-                # ---- push into queues (drop oldest when full) ----
+                # push into queues (drop oldest when full)
                 for q, data in ((self.cv_queue, cv_img), (self.np_queue, cv_img)):
                     try:
                         q.put_nowait(data)
@@ -164,7 +162,7 @@ class Handler(QObject):
                         q.get_nowait()  # drop oldest
                         q.put_nowait(data)
 
-                # ---- frame-set counter ----
+                # frame-set counter
                 self._cnt += 1
                 if self._cnt >= self.frames_per:
                     self._cnt = 0
@@ -172,15 +170,15 @@ class Handler(QObject):
                 else:
                     emit_needed = False
 
-            # —— leave critical section —— #
+            # leave critical section
             if emit_needed:
                 self.frameset_done.emit()
 
         # Requeue the frame for continuous capture
         cam.queue_frame(frame)
 
-    # blocking get（支持可选超时，兼容 viewer 的 timeout 调用）
-    # 兼容旧的 get_cv_image() 调用：仅支持关键字参数
+    # blocking get (supports optional timeout, compatible with viewer's timeout calls)
+    # compatible with old get_cv_image() calls: only support keyword arguments
     def get_cv_image(self, *, timeout=None):
         return self.cv_queue.get(timeout=timeout)
 

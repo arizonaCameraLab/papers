@@ -20,9 +20,7 @@ def decode_graycode(folder, proj_w=768, proj_h=768, black_thr=75, white_thr=10):
 
     folder = Path(folder)
 
-    # -------------------------------
     # read white / black
-    # -------------------------------
     white_img = cv2.imread(str(folder / "00_00.png"), cv2.IMREAD_GRAYSCALE)
     black_img = cv2.imread(str(folder / "01_00.png"), cv2.IMREAD_GRAYSCALE)
 
@@ -35,9 +33,7 @@ def decode_graycode(folder, proj_w=768, proj_h=768, black_thr=75, white_thr=10):
     print(f"Camera image size: {W} x {H}")
     print(f"Projector panel size: {proj_w} x {proj_h}")
 
-    # -------------------------------
     # create GrayCodePattern
-    # -------------------------------
     gray = cv2.structured_light.GrayCodePattern.create(proj_w, proj_h)
     gray.setBlackThreshold(black_thr)  # set black threshold
     gray.setWhiteThreshold(white_thr)  # set white threshold
@@ -46,9 +42,7 @@ def decode_graycode(folder, proj_w=768, proj_h=768, black_thr=75, white_thr=10):
     num_patterns = gray.getNumberOfPatternImages()
     print(f"GrayCodePattern expects: {num_patterns} pattern images")
 
-    # -------------------------------
     # Read all Gray Code pattern images
-    # -------------------------------
     pattern_imgs = []  # list of pattern images
     for i in range(num_patterns):  # read pattern images
         filename = f"{i+2:02d}_00.png"  # 02_00.png .. 41_00.png
@@ -59,9 +53,7 @@ def decode_graycode(folder, proj_w=768, proj_h=768, black_thr=75, white_thr=10):
             raise ValueError("Image size mismatch")
         pattern_imgs.append(img)
 
-    # -------------------------------
     # Call getProjPixel for each pixel
-    # -------------------------------
     projector_coords = np.zeros(
         (H, W, 2), dtype=np.float32
     )  # (u,v) for each camera pixel
@@ -125,9 +117,7 @@ def decode_graycode_refined(
     """
     folder = Path(folder)
 
-    # -------------------------------
     # read white / black
-    # -------------------------------
     white_img = cv2.imread(str(folder / "00_00.png"), 0)
     black_img = cv2.imread(str(folder / "01_00.png"), 0)
 
@@ -135,9 +125,7 @@ def decode_graycode_refined(
     print(f"Camera image size: {W} x {H}")
     print(f"Projector panel size: {proj_w} x {proj_h}")
 
-    # -------------------------------
     # create GrayCodePattern
-    # -------------------------------
     gray = cv2.structured_light.GrayCodePattern.create(proj_w, proj_h)
     gray.setBlackThreshold(black_thr)
     gray.setWhiteThreshold(white_thr)
@@ -145,9 +133,7 @@ def decode_graycode_refined(
     num_patterns = gray.getNumberOfPatternImages()
     print("Gray code patterns =", num_patterns)
 
-    # -------------------------------
     # read pattern images
-    # -------------------------------
     pattern_imgs = []
     for i in range(num_patterns):
         fname = f"{i+2:02d}_00.png"
@@ -156,9 +142,7 @@ def decode_graycode_refined(
             raise FileNotFoundError(fname)
         pattern_imgs.append(img)
 
-    # -------------------------------
     # first pass: raw decode
-    # -------------------------------
     proj_raw = np.full((H, W, 2), np.nan, np.float32)
     valid_raw = np.zeros((H, W), np.bool)
 
@@ -175,9 +159,7 @@ def decode_graycode_refined(
                 valid_raw[y, x] = True
     print("Raw decoding done.")
 
-    # -------------------------------
     # second pass: refine by homography
-    # -------------------------------
     print("Refining projector coordinates with local homography...")
 
     proj_refined = proj_raw.copy()
@@ -225,8 +207,6 @@ def decode_graycode_refined(
 
             proj_refined[y, x] = (u2, v2)
 
-    # -------------------------------
     # output
-    # -------------------------------
     print("Refinement done.")
     return proj_refined, valid_raw

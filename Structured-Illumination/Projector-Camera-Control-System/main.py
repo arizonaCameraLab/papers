@@ -46,7 +46,7 @@ def main():
         setup_pixel_format(cam)  # Ensure format is OpenCV-compatible
         handler = Handler()  # Thread-safe handler for receiving images
 
-        # --- Detect whether this camera is color or monochrome ---
+        # Detect whether this camera is color or monochrome 
         color_mode = is_color_camera(cam)
         print(f"Detected camera type: {'Color' if color_mode else 'Monochrome'}")
 

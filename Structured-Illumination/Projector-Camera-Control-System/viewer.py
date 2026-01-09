@@ -60,53 +60,52 @@ from plot_1d_profile import (
 
 
 class ImageView(QGraphicsView):
-    # 鼠标移动时发射 (x,y,gray)
+    # emit (x, y, gray_value) when mouse moves
     mouse_position_signal = pyqtSignal(int, int, int)
-    # 拖动结束后发射 (p1, p2, profile_values)
+    # emit (point1, point2, profile_values) after dragging ends
     profile_updated = pyqtSignal(tuple, tuple, np.ndarray)
 
-    # ----------------------------------------------------------
-    # 一个 1×1 的隐藏矩形，用来作为 event-filter 载体
-    # ----------------------------------------------------------
+    # a 1x1 invisible rectangle to serve as event-filter carrier
     class _HandleEventFilter(QGraphicsRectItem):
         def __init__(self, view: "ImageView"):
             super().__init__(-1, -1, 1, 1)  # tiny & invisible
             self._view = view
             self.setVisible(False)
 
-        # 这里把所有事件再转给 ImageView 做原本的统一处理
+        # send all events back again to ImageView for unified processing
         def sceneEventFilter(self, watched, event):
             return self._view._process_handle_event(watched, event)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
-        # OpenGL 渲染，加速平移缩放
+        # OpenGL rendering for smoother panning and zooming
         self.setViewport(QOpenGLWidget())
         self.setDragMode(QGraphicsView.ScrollHandDrag)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
 
-        # Scene + 主 Pixmap
+        # Scene + main Pixmap
         self._scene = QGraphicsScene(self)
         self.setScene(self._scene)
         self._pixmap_item = QGraphicsPixmapItem()
         self._scene.addItem(self._pixmap_item)
-        self.original_image = None  # 保存灰度图 (numpy array)
+        self.original_image = None  # save gray image (numpy array)
 
-        # Profile 模式相关
-        self.profile_mode = False  # 是否处于“画线”模式
+        # Profile mode state
+        self.profile_mode = False  # whether in profile mode
         self.profile_points = []  # [(x1,y1),(x2,y2)]
 
-        # 实际画红线
+        # draw the red line
         self.profile_line = QGraphicsLineItem()
         self.profile_line.setPen(QPen(QColor("red"), 3.0))
         self._scene.addItem(self.profile_line)
         self.profile_line.setVisible(False)
-        # 创建并添加隐藏过滤器
+        # create and add the hidden event filter
         self._handle_filter = ImageView._HandleEventFilter(self)
         self._scene.addItem(self._handle_filter)
 
-        # 起点/终点/中点（3 个小圆）
+        # create the three draggable handles:
+        # starting point, ending point, midpoint (3 small circles)
         x, y, w, h = (-4, -4, 8, 8)
         scale = 2
         self.handle_start = QGraphicsEllipseItem(
@@ -122,21 +121,21 @@ class ImageView(QGraphicsView):
             h.setBrush(QColor("red"))
             h.setZValue(10)
             h.setVisible(False)
-            h.setAcceptHoverEvents(True)  # 接收 hover 事件
+            h.setAcceptHoverEvents(True)  # receive hover events
             # h.setFlag(QGraphicsEllipseItem.ItemIsMovable, True)
 
-            self._scene.addItem(h)  # ① 先入 scene
-            h.installSceneEventFilter(self._handle_filter)  # ② 再装过滤器
+            self._scene.addItem(h)  # first add to scene
+            h.installSceneEventFilter(self._handle_filter)  # then install filter
 
-        # （可留可删）scene-level 过滤器对拖动画面平移等仍然有效
+        # (optionally) install scene-level event filter
         # self._scene.installEventFilter(self)
 
-        # 拖动相关状态
-        self._drag_handle = None  # 当前正在拖动的 handle
-        self._drag_start_pos = None  # 按下时的 scene 坐标
+        # dragging handle state
+        self._drag_handle = None  # handle being dragged
+        self._drag_start_pos = None  # coords of mouse press in scene
 
     def enable_profile_mode(self, enable: bool):
-        """开启/关闭 Profile 模式（点击两点画线、拖动圆点调整）"""
+        """Enable or disable Profile mode (click two points to draw line, drag handles to adjust)."""
         self.profile_mode = enable
         self.profile_points.clear()
         self.profile_line.setVisible(False)
@@ -145,8 +144,8 @@ class ImageView(QGraphicsView):
 
     def mousePressEvent(self, event):
         """
-        在 Profile 模式下，点击一次记录一个点，记录两个点后画线。
-        否则仍保持默认的 Scene 平移逻辑。
+        In Profile mode, click to record points; after two points, draw line.
+        Otherwise, keep default panning.
         """
         if self.profile_mode and self.original_image is not None:
             pt = self.mapToScene(event.pos())
@@ -155,13 +154,14 @@ class ImageView(QGraphicsView):
             if 0 <= x < w and 0 <= y < h:
                 self.profile_points.append((x, y))
                 if len(self.profile_points) == 2:
-                    # 两点齐全后，调用统一画线函数
+                    # call set_profile_line to draw the line when both points are ready
                     self.set_profile_line(*self.profile_points)
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         """
-        拖动圆点时，鼠标释放后发射 profile_updated 信号。
+        In Profile mode, drag handles to adjust line.
+        After releasing, emit profile_updated.
         """
         if self.profile_mode and self._drag_handle:
             self._drag_handle = None
@@ -172,21 +172,17 @@ class ImageView(QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def set_profile_line(self, p1, p2):
-        """
-        根据两个端点 (p1,p2) 更新红线与三个圆点的位置。
-        """
+        """Set the profile line between two points and update handle positions."""
         self.profile_points = [p1, p2]
         self.profile_line.setLine(p1[0], p1[1], p2[0], p2[1])
         self.profile_line.setVisible(True)
         self._update_handles(p1, p2)
 
-        # ⇩ 新增：立即通知 ProfilePlotWindow 画曲线
+        # notice ProfilePlotWindow to plot the profile immediately
         self.profile_updated.emit(p1, p2, self.get_profile_values(p1, p2))
 
     def _update_handles(self, p1, p2):
-        """
-        放置 start, end, mid 三个圆点到对应位置。
-        """
+        """Place the start, end, and mid handles at the correct positions."""
         self.handle_start.setPos(QPointF(*p1))
         self.handle_end.setPos(QPointF(*p2))
         mid = ((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2)
@@ -194,33 +190,34 @@ class ImageView(QGraphicsView):
         for h in (self.handle_start, self.handle_end, self.handle_mid):
             h.setVisible(True)
 
-    # 被 _HandleEventFilter 调用的真正处理函数
+    # the function that actually processes events from the three handles, called by _HandleEventFilter
     def _process_handle_event(self, obj, event):
         """
-        统一拦截 handle_start、handle_end、handle_mid 这三个小圆抛出的
-        QGraphicsSceneHoverEvent / QGraphicsSceneMouseEvent，并作以下处理：
-         - 鼠标按下：记录当前拖动的 handle 与它的 scenePos
-         - 鼠标释放：取消拖动，并在 p1/p2 均存在时发射 profile_updated
-         - 悬停进入：切换为十字光标 + 高亮黄色圆
-         - 悬停离开：还原普通箭头 + 红色圆
-         - 拖动中：计算位移增量 (dx, dy)，更新 p1/p2 并调用 set_profile_line()，
-                   以实现“端点拖动时线段同步更新”、“中点拖动时整体平移”
+        unified intercept QGraphicsSceneHoverEvent / QGraphicsSceneMouseEvents
+        from the three handles: handle_start, handle_end, handle_mid, and process them as follows:
+            - Mouse Press: record the handle being dragged and its scenePos
+            - Mouse Release: end dragging, and emit profile_updated if both p1/p2 exist
+            - Hover Enter: change to cross cursor + highlight yellow circle
+            - Hover Leave: restore normal arrow cursor + red circle
+            - During Dragging: calculate displacement (dx, dy), update p1/p2 and call set_profile_line(),
+                               to achieve "line updates when endpoints are dragged" and "overall translation when midpoint is dragged"
         """
-        # 仅处理这三个 “小圆”
+
+        # only process these three "handles"
         if obj in (self.handle_start, self.handle_end, self.handle_mid):
-            # ——— 鼠标按下 ———
+            # mouse press event
             if event.type() == QEvent.GraphicsSceneMousePress:
-                # 记录被按下的 handle 以及按下时对应的 scene 坐标
+                # record the handle being pressed and its scenePos
                 self._drag_handle = obj
                 self._drag_start_pos = event.scenePos()
-                self.setDragMode(QGraphicsView.NoDrag)  # 关闭整幅图平移
+                self.setDragMode(QGraphicsView.NoDrag)  # close panning of whole image
                 return True
 
-            # ——— 鼠标释放 ———
+            # mouse release event
             elif event.type() == QEvent.GraphicsSceneMouseRelease:
-                # 结束拖动；如果已有两点，就发射 profile_updated
+                # end dragging; if both points exist, emit profile_updated
                 self._drag_handle = None
-                self.setDragMode(QGraphicsView.ScrollHandDrag)  # 恢复平移
+                self.setDragMode(QGraphicsView.ScrollHandDrag)  # resume panning
                 if len(self.profile_points) == 2:
                     self.profile_updated.emit(
                         *self.profile_points,
@@ -228,35 +225,35 @@ class ImageView(QGraphicsView):
                     )
                 return True
 
-            # ——— 悬停进入 ———
+            # hover enter event
             elif event.type() == QEvent.GraphicsSceneHoverEnter:
-                # 十字光标 + 高亮黄色
+                # change cursor to crosshair + highlight yellow circle
                 obj.setCursor(Qt.CrossCursor)
                 obj.setBrush(QColor("yellow"))
                 return True
 
-            # ——— 悬停离开 ———
+            # hover leave event
             elif event.type() == QEvent.GraphicsSceneHoverLeave:
-                # 普通箭头 + 还原红色
+                # normal arrow cursor + red circle
                 obj.setCursor(Qt.ArrowCursor)
                 obj.setBrush(QColor("red"))
                 return True
 
-            # ——— 拖动中不断移动 ———
+            # mouse move event (during dragging)
             elif event.type() == QEvent.GraphicsSceneMouseMove and self._drag_handle:
-                # 新的 scene 坐标，并裁剪到图像边界
+                # new scenePos, clipped to image boundaries
                 new_scene = event.scenePos()
                 x = max(0, min(new_scene.x(), self.original_image.shape[1] - 1))
                 y = max(0, min(new_scene.y(), self.original_image.shape[0] - 1))
                 new_scene = QPointF(x, y)
 
-                # 计算增量 = 当前 scenePos - 上一次记录的 scenePos
+                # calculate displacement = current scenePos - previous scenePos
                 dx = new_scene.x() - self._drag_start_pos.x()
                 dy = new_scene.y() - self._drag_start_pos.y()
-                # 更新 _drag_start_pos 供下次使用
+                # update _drag_start_pos for next use
                 self._drag_start_pos = new_scene
 
-                # 根据当前拖动的是哪个 handle，分别计算新的 p1, p2
+                # according to which handle is being dragged, calculate new p1, p2
                 if self._drag_handle == self.handle_start:
                     p1 = (x, y)
                     p2 = self.profile_points[1]
@@ -275,17 +272,14 @@ class ImageView(QGraphicsView):
                         max(0, min(py1 + dy, self.original_image.shape[0] - 1)),
                     )
 
-                # 只有当新旧端点确实变化时，才重新 set_profile_line
+                # only call set_profile_line if [p1, p2] actually changed
                 if [p1, p2] != self.profile_points:
                     self.set_profile_line(p1, p2)
                 return True
 
-        return False  # 表示此过滤器未处理，让 Qt 继续分发
+        return False  # means not handled, let Qt continue dispatching
 
     # def get_profile_values(self, p1, p2):
-    #     """
-    #     计算线段上各像素的灰度值（双线性插值）。
-    #     """
     #     if self.original_image is None:
     #         return np.array([])
 
@@ -300,20 +294,20 @@ class ImageView(QGraphicsView):
 
     def get_profile_values(self, p1, p2):
         """
-        使用 OpenCV 的 cv2.remap 实现双线性插值，获取线段上的灰度值。
-        如果图像不是灰度图，则自动转换为灰度后再采样。
+        use OpenCV's cv2.remap to perform bilinear interpolation and get gray values along the line segment.
+        if the image is not grayscale, automatically convert to grayscale before sampling.
         """
         if self.original_image is None:
             return np.array([])
 
-        # 自动转换为灰度图（如果是 BGR 或 RGB）
+        # automatically convert to grayscale if the image is color
         img = self.original_image
         if img.ndim == 3 and img.shape[2] == 3:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         elif img.ndim == 3 and img.shape[2] == 4:
             img = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
 
-        # 计算线段长度与插值坐标
+        # calculate line segment length and interpolation coordinates
         length = max(2, int(np.hypot(p2[0] - p1[0], p2[1] - p1[1])))
         x_vals = np.linspace(p1[0], p2[0], length).astype(np.float32)
         y_vals = np.linspace(p1[1], p2[1], length).astype(np.float32)
@@ -321,7 +315,7 @@ class ImageView(QGraphicsView):
         map_x = x_vals.reshape(1, -1)
         map_y = y_vals.reshape(1, -1)
 
-        # 使用双线性插值获取灰度值
+        # use cv2.remap for bilinear interpolation to get gray values
         profile = cv2.remap(
             img,
             map_x,
@@ -370,11 +364,11 @@ class ImageView(QGraphicsView):
 
     def mouseMoveEvent(self, event):
         """
-        除了拖动圆点时更新线段外，还要在鼠标移动时不断发射
-        (x,y,intensity)，以更新状态栏灰度值显示。
+        In addition to updating the line when dragging the handles,
+        also emit (x, y, intensity) on mouse move to update status bar gray value display.
         """
         if self.profile_mode and self._drag_handle:
-            # （如果拖动时也想在此同步更新线段，可以放这段，但已经在 eventFilter 中处理）
+            # if you want to update the line segment during dragging, put it here, but it's already handled in eventFilter
             pass
 
         super().mouseMoveEvent(event)
@@ -401,7 +395,7 @@ class ImageView(QGraphicsView):
 
     def wheelEvent(self, event):
         """
-        缩放视图：滚轮缩放，居中在鼠标位置。
+        Zoom the view: mouse wheel zooms in/out centered at mouse position.
         """
         factor = 1.25 if event.angleDelta().y() > 0 else 0.8
         self.scale(factor, factor)
@@ -492,14 +486,14 @@ class CameraViewer(QWidget):
         # self.calib_panel, self.calib_vars, self.calib_state = (
         #     create_projector_calibration_panel(
         #         lambda: state["paused"],
-        #         lambda: self.handler.get_cv_image() is not None,  # 或者你自己的帧触发条件
+        #         lambda: self.handler.get_cv_image() is not None,  # or your own frame trigger condition
         #     )
         # )
         self.calib_panel, self.calib_vars, self.calib_state = (
             create_projector_calibration_panel(
                 self.handler,
                 self.start_stream_fn,
-                self.stop_stream_fn,  # 或者你自己的帧触发条件
+                self.stop_stream_fn,  # or your own frame trigger condition
             )
         )
 
@@ -561,7 +555,7 @@ class CameraViewer(QWidget):
                     self.fps = self.frame_count / (now - self.prev_time)
                     self.prev_time = now
                     self.frame_count = 0
-                    # 每秒刷新一次状态栏中的 FPS
+                    # Also update status bar with new FPS
                     status = "Streaming" if state["streaming"] else "Paused"
                     self.status_label.setText(
                         f"Position: (-, -);  Value: -;  FPS: {self.fps:.1f};  "
@@ -600,7 +594,6 @@ class CameraViewer(QWidget):
     #         f"FPS: {fps_text:.1f};  State: {state_str};  Exposure: {exposure_text}"
     #     )
 
-
     def update_status(self, x, y, value):
         """
         Update status bar text depending on image type (color or grayscale).
@@ -629,7 +622,9 @@ class CameraViewer(QWidget):
 
         # --- Compose status text ---
         fps_text = getattr(self, "fps", 0.0)
-        exposure_text = int(self.exposure_val[0]) if hasattr(self, "exposure_val") else "-"
+        exposure_text = (
+            int(self.exposure_val[0]) if hasattr(self, "exposure_val") else "-"
+        )
         state_str = "Streaming" if state.get("streaming", False) else "Paused"
 
         self.status_label.setText(

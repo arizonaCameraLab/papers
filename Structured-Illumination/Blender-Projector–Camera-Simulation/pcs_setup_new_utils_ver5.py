@@ -1,5 +1,5 @@
 # pcs_setup_new_utils_ver5.py
-# Compatible Blender 5.X
+# Compatible with Blender 5.X
 from __future__ import annotations
 
 import os, sys, math

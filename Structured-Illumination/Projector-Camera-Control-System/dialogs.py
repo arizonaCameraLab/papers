@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QSizePolicy,
     QWidget,  # Base class for all UI panels
-    QSpinBox,  # <-- NEW: for integer ranges
+    QSpinBox,  # for integer ranges
     QVBoxLayout,  # Vertical layout manager
     QHBoxLayout,  # Horizontal layout manager
     QFormLayout,  # Form layout for label-field pairs
@@ -33,7 +33,7 @@ from project_pattern import (
 from project_pattern import ImageViewer
 import time, sys, os, shutil, numpy as np
 from PyQt5.QtWidgets import QInputDialog
-from global_state import state  # 新增
+from global_state import state # Global state dictionary
 from queue import Empty
 from PyQt5.QtCore import Qt
 import threading
@@ -45,7 +45,7 @@ from tqdm.auto import tqdm  # For progress bar in average calculation
 
 # Convert an exposure time into a slider position on a logarithmic scale
 def exposure_to_slider(exposure: int) -> int:
-    exposure = max(exposure, MIN_EXPOSURE)  # 防止 ≤0
+    exposure = max(exposure, MIN_EXPOSURE)  # prevent ≤0 cases
     ratio = log(exposure / MIN_EXPOSURE) / log(MAX_EXPOSURE / MIN_EXPOSURE)
     return int(ratio * SLIDER_MAX)
 
@@ -77,7 +77,7 @@ def create_feature_config_panel(
     pause_btn = QPushButton("Pause Streaming")
     top_layout.addWidget(start_btn)
     top_layout.addWidget(pause_btn)
-    # 两个按钮平分水平空间，保持默认高度
+    # two buttons share horizontal space equally, keep default height
     top_layout.setStretch(0, 1)
     top_layout.setStretch(1, 1)
     layout.addLayout(top_layout)
@@ -92,7 +92,7 @@ def create_feature_config_panel(
     dl_tlm_choices = ["Off", "On"]
     conv_choices = ["Off", "Sharpness", "CustomConvolution", "AdaptiveNoiseSuppression"]
     pixel_format_choices = ["Mono8", "Mono10", "Mono10p", "Mono12", "Mono12p"]
-    # --- New: binning-related enum choices (constrained) ---
+    # New: binning-related enum choices (constrained)
     binning_selector_choices = ["Digital"]  # only Digital selectable
     binning_mode_choices = ["Average", "Sum"]
 
@@ -174,7 +174,7 @@ def create_feature_config_panel(
             widget_vars[feat_name] = ("dropdown", combo)
             form_layout.addRow(QLabel(feat_name), combo)
 
-        # --- New: Binning enums and integer ranges ---
+        # Binning enums and integer ranges
         elif feat_name == "BinningSelector":
             # Only "Digital" is allowed
             combo = QComboBox()
@@ -296,7 +296,7 @@ def create_feature_config_panel(
     apply_btn.clicked.connect(apply_changes)
     layout.addWidget(apply_btn)
 
-    # clicked(bool) 会携带一个 checked 参数；用 lambda 把它丢掉
+    # clicked(bool) will carry a checked parameter; use lambda to discard it
     start_btn.clicked.connect(lambda _=False: start_callback())
     pause_btn.clicked.connect(lambda _=False: stop_callback())
 
@@ -316,24 +316,24 @@ def create_projector_calibration_panel(
      - Generate / Preview / Projection Capture / Restart buttons
     """
     panel = QWidget()
-    panel.session_count = 1  # 初始化第 1 次
-    panel.is_capturing = False  # <— 新增：当前没有正在采集
-    panel._start_stream_fn = start_stream_fn  # ➊ 记住启动函数
-    panel._stop_stream_fn = stop_stream_fn  #    （可选，备用）
+    panel.session_count = 1  # initialize the first session
+    panel.is_capturing = False  # whether capturing is in progress
+    panel._start_stream_fn = start_stream_fn  # remember start function
+    panel._stop_stream_fn = stop_stream_fn  # (optional, fallback)
     vlayout = QVBoxLayout(panel)
     form = QFormLayout()
     vlayout.addLayout(form)
     # vars = {}
     widgets = {}
 
-    # === Pattern Type 下拉框 ===
+    # pattern type dropdown selection
     pattern_type_combo = QComboBox()
-    # 新增 “Customized Pattern” 选项
+    # Customized Pattern
     pattern_type_combo.addItems(["Gray Code", "Fringe Pattern", "Customized Pattern"])
     form.addRow(QLabel("Pattern Type"), pattern_type_combo)
     widgets["pattern_type"] = pattern_type_combo
 
-    # === Fringe 参数输入框（初始隐藏） ===
+    # Fringe parameters input boxes (initially hidden)
     period_label = QLabel("Fringe Periods (px)")
     fringe_period_box = QLineEdit()
     fringe_period_box.setPlaceholderText("e.g. 20,40,60")
@@ -356,16 +356,16 @@ def create_projector_calibration_panel(
     # ):
     #     w.hide()
 
-    # 根据下拉选项动态显示/隐藏
+    # according to dropdown selection, show/hide relevant controls
     def on_pattern_type_changed(text):
         is_fringe = text == "Fringe Pattern"
         is_custom = text == "Customized Pattern"
 
-        # —— 如果是 Fringe，只显示 Fringe 相关控件 —— #
+        # if it's Fringe Pattern, show fringe controls
         for w in (period_label, fringe_period_box, phase_label, fringe_phase_box):
             w.setVisible(is_fringe)
 
-        # —— 如果是 Gray Code，则显示 Gray Code 相关控件；如果是 Custom 则都隐藏 —— #
+        # if it's Gray Code, show gray code controls; hide all for Customized
         show_gray = text == "Gray Code"
         for w in (
             inverse_label,
@@ -375,15 +375,15 @@ def create_projector_calibration_panel(
         ):
             w.setVisible(show_gray)
 
-        # （Customized Pattern 时，两组都隐藏；Fringe/Gray 则如上分别可见）
+        # when fringe / gray code, both groups are not visible; otherwise visible as above
 
     pattern_type_combo.currentTextChanged.connect(on_pattern_type_changed)
 
-    # === Burst Count ===
+    # Burst Count
     widgets["burst_count"] = QLineEdit(str(default_projector_config["burst_count"]))
     form.addRow(QLabel("Burst Count"), widgets["burst_count"])
 
-    # === Pattern folder ===
+    # Pattern folder
     hl = QHBoxLayout()
     widgets["pattern_folder"] = QLineEdit(default_projector_config["pattern_folder"])
     btn_browse = QPushButton("Browse…")
@@ -392,11 +392,11 @@ def create_projector_calibration_panel(
     form.addRow(QLabel("Pattern Folder"), hl)
     btn_browse.clicked.connect(lambda: _on_browse(panel, widgets))
 
-    # === Save folder 新增：默认 program_dir/calibration_capture，若已存在则清空 ===
+    # default program dir / calibration_capture, if exists, clear all contents; else create it
     hl2 = QHBoxLayout()
-    # 从 config 拿默认路径
+    # get default path from config
     save_dir = default_projector_config["capture_save_folder"]
-    # 如果存在，就删除所有子文件／目录；否则创建它
+    # if folder exists, clear all contents; else create it
     if os.path.exists(save_dir):
         pass
         # for fn in os.listdir(save_dir):
@@ -410,7 +410,7 @@ def create_projector_calibration_panel(
         #         pass
     else:
         os.makedirs(save_dir, exist_ok=True)
-    # 设置成默认路径
+    # set the default path
     widgets["save_folder"] = QLineEdit(save_dir)
     btn_save_browse = QPushButton("Browse…")
     hl2.addWidget(widgets["save_folder"])
@@ -418,7 +418,7 @@ def create_projector_calibration_panel(
     form.addRow(QLabel("Capture Save Folder"), hl2)
     btn_save_browse.clicked.connect(lambda: _on_browse_save(panel, widgets))
 
-    # === 其它参数：screen, width, height, background ===
+    # other parameters：screen, width, height, background
     for key in [
         "screen_number",
         "projector_width",
@@ -441,7 +441,7 @@ def create_projector_calibration_panel(
     form.addRow(inverse_label, widgets["inverse_pattern"])
     widgets["inverse_pattern"].setVisible(True)
 
-    # --- NEW: Synth Bit0 checkbox ---
+    # Synth Bit0 checkbox
     widgets["synth_bit0"] = QCheckBox()
     widgets["synth_bit0"].setChecked(
         default_projector_config.get("default_synth_bit0", False)
@@ -456,12 +456,13 @@ def create_projector_calibration_panel(
     widgets["scale"].setChecked(False)
     form.addRow(QLabel("Scale to Fullscreen"), widgets["scale"])
 
-    # === 按钮组：两行两列，横向等宽自适应 ===
+    # button layout: two rows, two columns, equal width
     btn_gen = QPushButton("Generate Pattern")
     btn_prev = QPushButton("Projector Preview")
     btn_cap = QPushButton("Projection Capture")
     btn_restart = QPushButton("Restart Capture")
-    # 第一行：两个按钮平分水平空间，保持默认高度
+  
+    # first row: two buttons share horizontal space equally, keep default height
     row1 = QHBoxLayout()
     row1.addWidget(btn_gen)
     row1.addWidget(btn_prev)
@@ -469,7 +470,7 @@ def create_projector_calibration_panel(
     row1.setStretch(1, 1)
     vlayout.addLayout(row1)
 
-    # 第二行：两个按钮平分水平空间，保持默认高度
+    # second row: two buttons share horizontal space equally, keep default height
     row2 = QHBoxLayout()
     row2.addWidget(btn_cap)
     row2.addWidget(btn_restart)
@@ -477,20 +478,20 @@ def create_projector_calibration_panel(
     row2.setStretch(1, 1)
     vlayout.addLayout(row2)
 
-    # —— 新增：平均 NPY 并保存按钮 —— #
+    # button: average npy and save 
     btn_avg = QPushButton("Average Captures")
     btn_avg.setEnabled(False)
     panel.avg_btn = btn_avg
     btn_avg.clicked.connect(lambda: _on_average(panel, widgets))
 
-    # —— 新增：单独一行，按钮占一半宽度 —— #
+    # third row: button + stretch
     row3 = QHBoxLayout()
-    # 按钮占 1 份，空白占 1 份
+    # button takes 1 part, blank takes 1 part
     row3.addWidget(btn_avg, 1)
     row3.addStretch(1)
     vlayout.addLayout(row3)
 
-    # === 挂载回调 ===
+    # mounting button handlers
     btn_gen.clicked.connect(lambda: _on_generate(widgets, panel))
     btn_prev.clicked.connect(lambda: _on_preview(widgets, panel))
     btn_cap.clicked.connect(
@@ -507,7 +508,7 @@ def create_projector_calibration_panel(
     return panel, widgets, {}
 
 
-# —— 辅助函数，实现按钮逻辑 —— #
+# auxiliary functions for button handlers
 def _on_browse_save(panel, widgets):
     folder = QFileDialog.getExistingDirectory(panel, "Select Save Folder")
     if folder:
@@ -515,7 +516,7 @@ def _on_browse_save(panel, widgets):
 
 
 def _on_restart(panel, widgets):
-    # 弹出输入框设定下次 session_count
+    # pop input dialog to set next session_count
     num, ok = QInputDialog.getInt(
         panel,
         "Restart Capture",
@@ -526,7 +527,7 @@ def _on_restart(panel, widgets):
     )
     if ok:
         panel.session_count = num
-        # 如果对应文件夹已存在，先清空
+        # remove existing folder if exists
         save_dir = widgets["save_folder"].text()
         target = os.path.join(save_dir, str(num))
         if os.path.isdir(target):
@@ -561,7 +562,7 @@ def _on_generate(widgets, panel):
 def _on_preview(widgets, panel):
     try:
         pattern_type = widgets["pattern_type"].currentText()
-        # —— 如果是 “Customized Pattern”，直接投影用户指定文件夹里的所有图片 —— #
+        # if it's Customized Pattern, directly launch viewer with all images in folder
         if pattern_type == "Customized Pattern":
             image_folder = widgets["pattern_folder"].text()
             launch_viewer(
@@ -574,7 +575,7 @@ def _on_preview(widgets, panel):
                 capture_condition_fn=None,
             )
         else:
-            # —— 保留原来的 Gray Code / Fringe 预览逻辑 —— #
+            # keep the original preview logic for Gray Code / Fringe
             launch_viewer(
                 image_folder=widgets["pattern_folder"].text(),
                 target_screen=int(widgets["screen_number"].text()),
@@ -605,14 +606,15 @@ class CaptureThread(QThread):
     Background thread to run structured‑light capture without blocking GUI.
     """
 
-    # --- 新增：跨线程请求主线程显示图案 ---
+    # request main thread to show pattern
     show_pattern = pyqtSignal(str)
 
     FRAME_TIMEOUT = 5.0  # seconds to wait for each frame
-    # 原有信号
+    # original signals
     finished = pyqtSignal(int, int)
     error = pyqtSignal(str)
-    # # 新增：告诉主线程显示哪张 pattern／隐藏 pattern
+
+    ## tell main thread to show/hide pattern
     # show_pattern = pyqtSignal(str)
     # hide_pattern = pyqtSignal()
 
@@ -626,9 +628,7 @@ class CaptureThread(QThread):
 
     def run(self):
         try:
-            # ------------------------------------------------------------------
-            # 0. 准备保存目录
-            # ------------------------------------------------------------------
+            # prepare save folder directory
             save_root = self.widgets["save_folder"].text().strip()
             if not save_root:
                 self.error.emit("Please select Save Folder before capture.")
@@ -643,10 +643,7 @@ class CaptureThread(QThread):
                 )
                 return
 
-            # ------------------------------------------------------------------
-            # 1. 读取参数
-            # ------------------------------------------------------------------
-
+            # read parameters
             try:
                 frames_per = int(self.widgets["burst_count"].text())
             except ValueError:
@@ -655,7 +652,7 @@ class CaptureThread(QThread):
 
             patt_folder = self.widgets["pattern_folder"].text()
             try:
-                # —— 根据期望的 Pattern Type 选择排序方式 —— #
+                # choose sorting method based on Pattern Type
                 ptype = self.widgets["pattern_type"].currentText()
                 all_pngs = [
                     os.path.join(patt_folder, f)
@@ -663,10 +660,10 @@ class CaptureThread(QThread):
                     if f.lower().endswith(".png")
                 ]
                 if ptype == "Customized Pattern":
-                    # 自定义模式：按文件名排序（或其他简单排序）
+                    # customized mode: sort by filename (or other simple sorting)
                     patterns = sorted(all_pngs)
                 else:
-                    # Gray Code / Fringe 模式：仍然使用原来的 pattern_key 排序
+                    # gray code / fringe mode: use original pattern_key sorting
                     patterns = sorted(all_pngs, key=self.pattern_key)
             except OSError as e:
                 self.error.emit(f"Cannot read Pattern Folder {patt_folder}: {e}")
@@ -675,11 +672,9 @@ class CaptureThread(QThread):
                 self.error.emit("Pattern Folder must contain at least one PNG image.")
                 return
 
-            # ------------------------------------------------------------------
-            # 2. 逐‑pattern 采集：Stop → Flush → Show → Start → Grab → Stop
-            # ------------------------------------------------------------------
+            # capture each pattern in sequence: Stop → Flush → Show → Start → Grab → Stop
             for pat_i, img_path in enumerate(patterns):
-                # 2‑1 先停流，保证无旧帧继续灌入
+                # stop streaming first to avoid old frames coming in
                 try:
                     self.stop_fn()
                 except Exception:
@@ -688,31 +683,31 @@ class CaptureThread(QThread):
                 while state["streaming"] and time.time() - t0 < 2:
                     time.sleep(0.02)
 
-                # 2‑2 清空 handler 队列
+                # clear any old frames in the queue
                 _flush_queues(self.handler)
 
-                # 2‑3 投屏（必须在 GUI 线程执行）并等待 ImageViewer 真正完成绘制
-                # ── 通过信号请求主线程显示图案，并阻塞等待它真正绘制完 ── #
+                # project pattern (must be excuted in GUI thread) and wait until it's really drawn
+                # request main thread to show pattern and wait for image_changed signal
                 done_evt = threading.Event()
 
                 def _ready(_):
                     done_evt.set()
 
-                # 1) 让主线程创建 / 切换 ImageViewer
+                # let main thread create / switch ImageViewer
                 self.show_pattern.emit(img_path)
 
-                # 2) 等到 ImageViewer 反馈 image_changed
-                # 等到主线程创建了一个未被删除的新 viewer
+                # Wait for ImageViewer to emit the `image_changed` signal
+                # Wait until the main thread has created a new viewer that has not been destroyed
                 while True:
                     viewer = self.widgets.get("_pat_viewer")
                     if viewer is not None and not sip.isdeleted(viewer):
                         break
                     time.sleep(0.01)
                 viewer.image_changed.connect(_ready)
-                done_evt.wait(0.2)  # 最多等 200 ms
+                done_evt.wait(0.2)  # wait no more than 200 ms
                 viewer.image_changed.disconnect(_ready)
-                viewer = self.widgets.get("_pat_viewer")  # 主线程创建好的 viewer
-                # 等待 image_changed 信号（最长 100ms）
+                viewer = self.widgets.get("_pat_viewer")  # viewer created in main thread
+                # Wait for the `image_changed` signal (up to 100 ms)
                 image_ready = threading.Event()
 
                 def _ready(path):
@@ -721,12 +716,12 @@ class CaptureThread(QThread):
                 viewer.image_changed.connect(_ready)
                 image_ready.wait(0.1)
                 viewer.image_changed.disconnect(_ready)
-                time.sleep(0.1)  # 等待绘制完成
+                time.sleep(0.1)  # wait for drawing settle
 
-                # 2‑4 重新开流，使用最小 buffer
+                # Restart streaming with the minimum buffer size
                 try:
                     self.start_fn(frames_per + 2)
-                except TypeError:  # 兼容旧签名
+                except TypeError:  # compatible with old signature
                     self.start_fn()
                 t0 = time.time()
                 while not state["streaming"] and time.time() - t0 < 2:
@@ -735,7 +730,7 @@ class CaptureThread(QThread):
                     self.error.emit("Timeout while starting camera streaming.")
                     return
 
-                # # 2-5 为该图案创建子目录，如果已存在则清空
+                # Create a subdirectory for this pattern; clear it if it already exists
                 # subdir = os.path.join(session_dir, f"{pat_i:02d}")
                 # if os.path.isdir(subdir):
                 #     try:
@@ -753,7 +748,7 @@ class CaptureThread(QThread):
                 #     self.stop_fn()
                 #     return
 
-                # 2‑6 抓取 frames_per 帧
+                # Capture `frames_per` frames
                 for frame_i in range(frames_per):
                     try:
                         np_frame = self.handler.np_queue.get(timeout=self.FRAME_TIMEOUT)
@@ -763,7 +758,9 @@ class CaptureThread(QThread):
                         )
                         self.stop_fn()
                         return
-                    # —— 如果是 “Customized Pattern”，就用原始文件名作为前缀，否则沿用数字索引 —— #
+
+                    # If this is a "Customized Pattern", use the original filename as the prefix;
+                    # otherwise, continue using the numeric index
                     pattern_name = os.path.splitext(os.path.basename(img_path))[0]
                     if ptype == "Customized Pattern":
                         save_name = f"{pattern_name}_projection_{frame_i:02d}.png"
@@ -785,17 +782,15 @@ class CaptureThread(QThread):
                         self.error.emit(f"Failed saving frame {frame_i}: {e}")
                         self.stop_fn()
                         return
-                # 2‑7 采完立即停流并再次清空队列
+                # Stop streaming immediately after capture and clear the queue again
                 self.stop_fn()
                 _flush_queues(self.handler)
 
-            # ------------------------------------------------------------------
-            # 3. 全部完成
-            # ------------------------------------------------------------------
+            # all done
             self.finished.emit(len(patterns), frames_per)
 
         finally:
-            # 确保相机在所有路径上都被停掉
+            # Ensure the camera is stopped on all execution paths
             try:
                 self.stop_fn()
             except Exception:
@@ -813,7 +808,7 @@ class CaptureThread(QThread):
         if name.startswith("VerGrayCode_"):
             idx = int(name.split("_")[1])
             return (3, idx)
-        # 其它文件放最后，按名字再排一次
+        # Place other files at the end and sort them again by name
         return (4, name)
 
 
@@ -825,7 +820,7 @@ def _on_capture(
     stop_stream_fn,
 ):
     panel.calib_widgets = widgets
-    # 并发安全检查
+    # Concurrency safety check
     if getattr(panel, "is_capturing", False):
         QMessageBox.warning(panel, "Warning", "A capture is already in progress.")
         return
@@ -836,7 +831,7 @@ def _on_capture(
         return
     panel.is_capturing = True
 
-    # ★★ 把“Burst Count”写进 handler ★★
+    # Write the "Burst Count" into the handler
     # try:
     #     handler.frames_per = int(widgets["burst_count"].text())
     # except ValueError:
@@ -844,7 +839,7 @@ def _on_capture(
     #     return
     try:
         new_fp = int(widgets["burst_count"].text())
-        # 使用同一把锁更新参数与计数
+        # Update parameters and counters using the same lock
         with handler._lock:
             handler.frames_per = new_fp
             handler._cnt = 0
@@ -852,10 +847,11 @@ def _on_capture(
         QMessageBox.warning(panel, "Error", "Invalid Burst Count value.")
         return
 
-    # 让 CaptureThread 独占图案切换，GUI 端不再监听 frameset_done，
-    # 避免“屏幕先切图、线程还在保存旧图”的竞态
+    # Let CaptureThread exclusively control pattern switching. The GUI side no longer
+    # listens for `frameset_done`, to avoid a race condition where the screen switches
+    # patterns while the thread is still saving the previous frames.
 
-    # 禁用按钮
+    # disable button
     for btn in panel.findChildren(QPushButton):
         if btn.text() in (
             "Generate Pattern",
@@ -864,18 +860,18 @@ def _on_capture(
         ):
             btn.setEnabled(False)
 
-    # 创建并启动线程
+    # Create and start the thread
     thread = CaptureThread(
         widgets, handler, start_stream_fn, stop_stream_fn, panel.session_count
     )
-    panel._capture_thread = thread  # 保留引用
+    panel._capture_thread = thread  # keep a reference
 
-    # 让信号跑到 GUI 线程执行 _on_show_pattern
+    # Deliver the signal to the GUI thread to run `_on_show_pattern`
     thread.show_pattern.connect(lambda img: _on_show_pattern(widgets, img))
 
-    # 原有：完成和错误信号
+    # Original: completion and error signals
     thread.finished.connect(lambda p, f: _on_capture_done(panel, p, f))
-    # 把 widgets 也闭包进来
+    # Capture the widgets in the closure as well
     thread.error.connect(lambda msg: _on_capture_error(panel, widgets, msg))
 
     thread.start()
@@ -884,7 +880,7 @@ def _on_capture(
 def _on_capture_done(panel, patterns_count, frames_per):
     panel.is_capturing = False
     panel.session_count += 1
-    # ➜ 新增：显示 WhitePattern.png
+    # Display WhitePattern.png
     white = os.path.join(
         panel.calib_widgets["pattern_folder"].text(), "WhitePattern.png"
     )
@@ -895,10 +891,10 @@ def _on_capture_done(panel, patterns_count, frames_per):
         f"Session #{panel.session_count - 1} is done!",
         f"Captured {patterns_count} patterns × {frames_per} frames.",
     )
-    # 重启 streaming
+    # restart streaming
     try:
         panel._start_stream_fn(frames_per + 2)  # optional buffer size
-        # 等待 streaming 状态变为 True，最多等 2 秒
+        # Wait for the streaming state to become True (up to 2 seconds)
         t0 = time.time()
         while not state["streaming"] and time.time() - t0 < 2:
             time.sleep(0.02)
@@ -913,7 +909,7 @@ def _on_capture_done(panel, patterns_count, frames_per):
         ):
             btn.setEnabled(True)
 
-    # 激活“Average Captures”按钮
+    # activate "Average Captures" button
     getattr(panel, "avg_btn", QPushButton()).setEnabled(True)
 
     del panel._capture_thread
@@ -927,17 +923,17 @@ def _on_capture_error(panel, widgets, msg):
     :param widgets: The dict of calibration controls passed into _on_capture
     :param msg: The error message emitted by the thread
     """
-    # 1. 先关闭残留的 pattern viewer
+    # first close residual pattern viewer
     _on_hide_pattern(widgets)
-    # 1.1 如果是捕获失败，显示白色图案
+    # if it's a capture error, show white pattern
     white = os.path.join(widgets["pattern_folder"].text(), "WhitePattern.png")
     if os.path.isfile(white):
         _on_show_pattern(widgets, white)
 
-    # 2. 重置标志
+    # reset is_capturing flag
     panel.is_capturing = False
 
-    # 3. 恢复按钮（根据按钮文本匹配）
+    # recover buttons
     for btn in panel.findChildren(QPushButton):
         if btn.text() in (
             "Generate Pattern",
@@ -946,31 +942,30 @@ def _on_capture_error(panel, widgets, msg):
         ):
             btn.setEnabled(True)
 
-    # 4. 弹出错误提示框
+    # pop up error message
     QMessageBox.critical(panel, "Error", msg)
-
-    # 5. 删除线程引用，避免内存泄漏
+    
+    # delete the thread reference to avoid memory leak
     if hasattr(panel, "_capture_thread"):
         del panel._capture_thread
 
 
 def _on_show_pattern(widgets, img_path):
-    """在主线程里安全创建／复用 ImageViewer 并显示单张 pattern"""
-    # 获取或创建 QApplication
+    """ safely create or reuse an ImageViewer to show a single pattern image in the main thread. """
+    # QApplication
     app = QApplication.instance() or QApplication(sys.argv)
-    # 读取屏幕几号
     # screen_idx = int(widgets["screen_number"].text())
     # screen_geom = app.screens()[screen_idx].geometry()
     screen_idx = int(widgets["screen_number"].text())
     screens = app.screens()
-    if screen_idx >= len(screens):  # 越界回退主屏
+    if screen_idx >= len(screens):  # return to primary screen if out of range
         screen_idx = 0
     screen_geom = screens[screen_idx].geometry()
 
-    # 如果之前没创建，就新建；否则更新 image_paths                   # ⬅︎ 新增
+    # if it is not created yet, create a new one; otherwise update image_paths                
     viewer = widgets.get("_pat_viewer")
 
-    # 如果不存在，或已被 Esc 关闭而实际 C++ 对象已删除，就重新创建
+    # if not existing viewer or closed by Esc and C++ object deleted, then recreate
     if viewer is None or sip.isdeleted(viewer) or not viewer.isVisible():
         viewer = ImageViewer(
             [img_path],
@@ -988,20 +983,20 @@ def _on_show_pattern(widgets, img_path):
         viewer.show_image()
 
     viewer.show()
-    return viewer  # 返回当前 viewer 供后续使用
+    return viewer  # return current viewer for further use
 
 
 def _on_hide_pattern(widgets):
-    """在主线程里关闭 pattern viewer"""
+    """ Close the pattern viewer in the main thread. """
     viewer = widgets.get("_pat_viewer")
     if viewer and not sip.isdeleted(viewer):
         viewer.close()
-    # 无论是否已删除，都把字典项设成 None，避免残留野指针
+    # no matter viewer existed or not, set to None to avoid dangling pointer
     widgets["_pat_viewer"] = None
 
 
 def _advance_pattern(widgets):
-    """收到 frameset_done 后切到下一张；全部结束后转白场"""
+    """Advance to the next pattern in the list when frameset_done, or show white pattern if done."""
     patterns = widgets.get("_patterns", [])
     if not patterns:
         return
@@ -1014,7 +1009,7 @@ def _advance_pattern(widgets):
         next_img = patterns[widgets["_pat_idx"]]
         _on_show_pattern(widgets, next_img)
     else:
-        # 全部完成 → 白场
+        # all done → white pattern
         white = os.path.join(widgets["pattern_folder"].text(), "WhitePattern.png")
         if os.path.isfile(white):
             _on_show_pattern(widgets, white)
@@ -1022,9 +1017,7 @@ def _advance_pattern(widgets):
             _on_hide_pattern(widgets)
 
 
-# ================================================================
-# Helper: 清空 Handler 队列
-# ================================================================
+# Helper: flush handler queues
 def _flush_queues(handler):
     for q in (handler.cv_queue, handler.np_queue):
         try:
@@ -1035,11 +1028,11 @@ def _flush_queues(handler):
 
 
 def _on_average(panel, widgets):
-    """遍历所有 session/bit 目录，计算平均并保存为 .npy 和 .png"""
+    """iterate through all session/bit directories, compute average and save as .npy and .png"""
     save_root = widgets["save_folder"].text().strip()
     if not save_root or not os.path.isdir(save_root):
         QMessageBox.warning(
-            panel, "Warning", "请先完成一次 Projection Capture 并确保保存目录有效。"
+            panel, "Warning", "Please complete a Projection Capture first and ensure the Save Folder is valid."
         )
         return
     for session in tqdm(os.listdir(save_root), desc="Sessions"):
@@ -1052,7 +1045,7 @@ def _on_average(panel, widgets):
             bit_dir = os.path.join(session_dir, bit)
             if not os.path.isdir(bit_dir):
                 continue
-            # 读取所有 .npy（排除已有平均文件）
+            # read all .npy files (excluding existing average files)
             files = [
                 f
                 for f in os.listdir(bit_dir)
@@ -1064,7 +1057,7 @@ def _on_average(panel, widgets):
             avg = sum(arrs) / len(arrs)
             out_npy = os.path.join(bit_dir, f"{session}_{bit}_avrg.npy")
             np.save(out_npy, avg.astype(float))
-            # 保存为 8‑bit PNG
+            # save as 8-bit PNG
             img8 = np.clip(avg, 0, 255).astype(np.uint8)
             out_png = os.path.join(bit_dir, f"{session}_{bit}_avrg.png")
             cv2.imwrite(out_png, img8)
