@@ -589,7 +589,7 @@ class NetParallelTrain:
                 # ===== Height =====
                 plt.subplot(1,2,1)
                 plt.imshow(h_np, cmap='gray')
-                plt.title(f"Pred Height (Net {best_idx})")  
+                # plt.title(f"Pred Height (Net {best_idx})")  
                 plt.colorbar()
 
                 # ===== Reflectance =====
@@ -599,7 +599,7 @@ class NetParallelTrain:
                 else:
                     plt.imshow(r_np, cmap='gray')
                     plt.colorbar()
-                plt.title(f"Pred Reflectance (Net {best_idx})")
+                # plt.title(f"Pred Reflectance (Net {best_idx})")
                 plt.show()
 
         print(f"Training finished in {time.perf_counter() - start_time:.1f}s")

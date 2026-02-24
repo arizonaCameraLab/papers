@@ -332,11 +332,29 @@ def pad_to_size(image, target_size, pad_dims=(0, 1), value=0):
         return np.pad(image, pad_config, mode='constant', constant_values=value)
 
 
-
-def generate_test_data(n_pts, square_size=4, max_height=40,
-                       pattern_source="checkboard", obj_source="sphere",
-                       pattern_mode="binary", reflectance_mode="gray"):
-
+def generate_test_data(
+    n_pts,
+    square_size=4,
+    max_height=40,
+    pattern_source="checkboard",
+    obj_source="sphere",
+    pattern_mode="binary",
+    reflectance_mode="gray",
+    # NEW: sinusoid params
+    period=16,
+    sin_axis="x",      # "x" -> varies along x (vertical stripes), "y" -> varies along y (horizontal stripes)
+    sin_binary=True,   # only used when pattern_source == "sin" and pattern_mode == "binary"
+):
+    """
+    Returns:
+        height_map: torch.Tensor [H, W]
+        reflectance:
+            - gray: [1, H, W]
+            - rgb*: [3, H, W]
+        pattern:
+            - binary: [1, H, W]
+            - rgb:    [3, H, W]
+    """
 
     # -----------------------------
     def generate_spherical_cap(radius=100, max_height=100, num_points=256):
@@ -354,24 +372,22 @@ def generate_test_data(n_pts, square_size=4, max_height=40,
 
     # -----------------------------
     def draw_reflectance_circles_random(image_size=(256, 256), n_circles=4, radius=None):
-
         H, W = image_size
-        reflectance = torch.ones(3, H, W) * 0.2  
-        yy, xx = torch.meshgrid(torch.arange(H), torch.arange(W), indexing='ij')
-
+        reflectance = torch.ones(3, H, W) * 0.2
+        yy, xx = torch.meshgrid(torch.arange(H), torch.arange(W), indexing="ij")
 
         if radius is None:
             radius = int(min(H, W) * 0.12)
         else:
             radius = int(radius)
 
-        min_dist = radius * 2.2  
+        min_dist = radius * 2.2
 
         colors_all = [
             (1, 0, 0), (0, 1, 0), (0, 0, 1),
             (1, 1, 0), (1, 0, 1), (0, 1, 1)
         ]
-        colors = random.sample(colors_all, n_circles)
+        colors = random.sample(colors_all, k=min(n_circles, len(colors_all)))
 
         centers = []
         attempts = 0
@@ -395,21 +411,61 @@ def generate_test_data(n_pts, square_size=4, max_height=40,
 
         return reflectance
 
+    # -----------------------------
+    def make_sin_pattern_2d(n_pts, period, axis="x", binary=True):
+        """
+        axis="x": varies along x, y unchanged => vertical stripes
+        axis="y": varies along y, x unchanged => horizontal stripes
+        period=2 means 1px black / 1px white for binary stripes.
 
+        For binary=True:
+            Use a square-wave derived from sin() via sign().
+        For binary=False:
+            Use smooth sinusoid in [0,1].
+        """
+        if period <= 0:
+            raise ValueError("period must be a positive number")
+
+        coords = torch.arange(n_pts, dtype=torch.float32)
+
+        # Smooth sinusoid in [-1, 1]
+        s = torch.sin(2.0 * torch.pi * coords / float(period))
+
+        if binary:
+            # Convert to 0/1 square wave.
+            # Use >= 0 to avoid producing all-zeros at points where sin==0.
+            w = (s >= 0).to(torch.float32)
+        else:
+            # Map to [0,1]
+            w = 0.5 * (1.0 + s)
+
+        if axis == "x":
+            # vary across columns, repeat along rows
+            pat2d = w.unsqueeze(0).repeat(n_pts, 1)
+        elif axis == "y":
+            # vary across rows, repeat along columns
+            pat2d = w.unsqueeze(1).repeat(1, n_pts)
+        else:
+            raise ValueError("sin_axis must be 'x' or 'y'")
+
+        return pat2d
+
+    # -----------------------------
+    # Object height map
     # -----------------------------
     if obj_source == "slope":
-        ramp = torch.linspace(0, max_height, n_pts).unsqueeze(0)
-        height_map = ramp.repeat(n_pts, 1)
+        ramp = torch.linspace(0, float(max_height), n_pts).unsqueeze(0)  # [1, W]
+        height_map = ramp.repeat(n_pts, 1)  # [H, W]
         X, Y = np.meshgrid(np.arange(n_pts), np.arange(n_pts))
     else:
-        X, Y, height_map = generate_spherical_cap(
-            radius=400, max_height=max_height, num_points=n_pts
-        )
-        height_map = torch.from_numpy(height_map)
+        X, Y, hm_np = generate_spherical_cap(radius=400, max_height=max_height, num_points=n_pts)
+        height_map = torch.from_numpy(hm_np)
 
     # -----------------------------
+    # Reflectance
+    # -----------------------------
     if reflectance_mode == "gray":
-        reflectance = torch.ones(n_pts, n_pts)[None,:,:]
+        reflectance = torch.ones(n_pts, n_pts)[None, :, :]  # [1, H, W]
     elif reflectance_mode == "rgb_random":
         reflectance = torch.rand(3, n_pts, n_pts) * 0.5 + 0.5
     elif reflectance_mode == "rgb_circles":
@@ -424,11 +480,21 @@ def generate_test_data(n_pts, square_size=4, max_height=40,
         if pattern_source == "checkboard":
             ii = torch.arange(n_pts).unsqueeze(1)
             jj = torch.arange(n_pts).unsqueeze(0)
-            pattern = (((ii // square_size) + (jj // square_size)) % 2 == 0).float()
+            pattern2d = (((ii // square_size) + (jj // square_size)) % 2 == 0).float()
+
+        elif pattern_source == "sin":
+            pattern2d = make_sin_pattern_2d(
+                n_pts=n_pts,
+                period=period,
+                axis=sin_axis,
+                binary=sin_binary
+            )
+
         else:
+            # random block binary
             grid_dim_x = -(-n_pts // square_size)
             grid_dim_y = -(-n_pts // square_size)
-            pattern = torch.zeros((n_pts, n_pts))
+            pattern2d = torch.zeros((n_pts, n_pts))
             for gy in range(grid_dim_y):
                 for gx in range(grid_dim_x):
                     if random.random() > 0.5:
@@ -436,34 +502,72 @@ def generate_test_data(n_pts, square_size=4, max_height=40,
                         x0 = gx * square_size
                         y1 = min(y0 + square_size, n_pts)
                         x1 = min(x0 + square_size, n_pts)
-                        pattern[y0:y1, x0:x1] = 1.0
-        pattern = pattern.unsqueeze(0)  # [1, H, W]
-    else:
-        grid_dim_x = -(-n_pts // square_size)
-        grid_dim_y = -(-n_pts // square_size)
-        pattern = torch.zeros((3, n_pts, n_pts), dtype=torch.float32)
-        for gy in range(grid_dim_y):
-            for gx in range(grid_dim_x):
-                color = random.choice([(1, 0, 0), (0, 1, 0), (0, 0, 1)])
-                y0 = gy * square_size
-                x0 = gx * square_size
-                y1 = min(y0 + square_size, n_pts)
-                x1 = min(x0 + square_size, n_pts)
-                pattern[0, y0:y1, x0:x1] = color[0]
-                pattern[1, y0:y1, x0:x1] = color[1]
-                pattern[2, y0:y1, x0:x1] = color[2]
+                        pattern2d[y0:y1, x0:x1] = 1.0
 
+        pattern = pattern2d.unsqueeze(0)  # [1, H, W]
+
+    elif pattern_mode == "rgb":
+        if pattern_source == "sin":
+            # y方向变化：水平条纹（每一行一个值），x方向不变（整行复制）
+            coords = torch.arange(n_pts, dtype=torch.float32)
+            if period <= 0:
+                raise ValueError("period must be a positive number")
+    
+            phase = 2.0 * torch.pi * coords / float(period)  # [n_pts]
+    
+            # 120°相移的RGB正弦（范围[0,1]）
+            r_1d = 0.5 * (1.0 + torch.sin(phase + 0.0))
+            g_1d = 0.5 * (1.0 + torch.sin(phase + 2.0 * torch.pi / 3.0))
+            b_1d = 0.5 * (1.0 + torch.sin(phase + 4.0 * torch.pi / 3.0))
+    
+            if sin_axis == "x":
+                # 竖条纹：随x变，y不变
+                r2d = r_1d.unsqueeze(0).repeat(n_pts, 1)
+                g2d = g_1d.unsqueeze(0).repeat(n_pts, 1)
+                b2d = b_1d.unsqueeze(0).repeat(n_pts, 1)
+            elif sin_axis == "y":
+                # 横条纹：随y变，x不变（你现在要这个）
+                r2d = r_1d.unsqueeze(1).repeat(1, n_pts)
+                g2d = g_1d.unsqueeze(1).repeat(1, n_pts)
+                b2d = b_1d.unsqueeze(1).repeat(1, n_pts)
+            else:
+                raise ValueError("sin_axis must be 'x' or 'y'")
+    
+            pattern = torch.stack([r2d, g2d, b2d], dim=0)  # [3, H, W]
+
+        else:
+            # original rgb block pattern
+            grid_dim_x = -(-n_pts // square_size)
+            grid_dim_y = -(-n_pts // square_size)
+            pattern = torch.zeros((3, n_pts, n_pts), dtype=torch.float32)
+            for gy in range(grid_dim_y):
+                for gx in range(grid_dim_x):
+                    color = random.choice([(1, 0, 0), (0, 1, 0), (0, 0, 1)])
+                    y0 = gy * square_size
+                    x0 = gx * square_size
+                    y1 = min(y0 + square_size, n_pts)
+                    x1 = min(x0 + square_size, n_pts)
+                    pattern[0, y0:y1, x0:x1] = color[0]
+                    pattern[1, y0:y1, x0:x1] = color[1]
+                    pattern[2, y0:y1, x0:x1] = color[2]
+    else:
+        raise ValueError("pattern_mode must be 'binary' or 'rgb'")
+
+    # -----------------------------
+    # Plot
     # -----------------------------
     plt.figure(figsize=(12, 8))
 
     plt.subplot(2, 2, 1)
     plt.title(f"Height map ({obj_source})")
-    plt.imshow(height_map, aspect='equal')
-    plt.colorbar(label='Height')
+    plt.imshow(height_map.numpy() if isinstance(height_map, torch.Tensor) else height_map, aspect="equal")
+    plt.colorbar(label="Height")
 
     plt.subplot(2, 2, 2)
+    # For slope branch X,Y are numpy; for sphere branch X,Y are numpy too.
+    # Use Y center column and height_map center column
     y_vals = Y[:, n_pts // 2]
-    z_vals = height_map[:, n_pts // 2]
+    z_vals = height_map[:, n_pts // 2].numpy()
     plt.plot(y_vals, z_vals)
     plt.xlabel("Y")
     plt.ylabel("Z")
@@ -473,15 +577,15 @@ def generate_test_data(n_pts, square_size=4, max_height=40,
     if reflectance_mode.startswith("rgb"):
         plt.imshow(reflectance.permute(1, 2, 0).numpy())
     else:
-        plt.imshow(reflectance.numpy().squeeze(), cmap='gray')
-    plt.title(f'Reflectance ({reflectance_mode})')
+        plt.imshow(reflectance.squeeze(0).numpy(), cmap="gray")
+    plt.title(f"Reflectance ({reflectance_mode})")
 
     plt.subplot(2, 2, 4)
     if pattern_mode == "rgb":
         plt.imshow(pattern.permute(1, 2, 0).numpy())
     else:
-        plt.imshow(pattern.squeeze().numpy(), cmap='gray')
-    plt.title(f'Pattern ({pattern_mode})')
+        plt.imshow(pattern.squeeze(0).numpy(), cmap="gray")
+    plt.title(f"Pattern ({pattern_source}, {pattern_mode})")
 
     plt.tight_layout()
     plt.show()
