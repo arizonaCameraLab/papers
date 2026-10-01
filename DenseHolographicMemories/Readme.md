@@ -12,6 +12,8 @@ The paper shows that a cascade of two volume holograms around a nonlinear hidden
 |---|---|---|
 | [`DAMShift.ipynb`](DAMShift.ipynb) | Fig. 2 | Shift-multiplexed realization of the hidden layer: shift selectivity and memory-neuron count versus hologram thickness, and recall fidelity versus page size with linear and softmax read-out. |
 | [`DAMMno.ipynb`](DAMMno.ipynb) | Fig. 3 | Growth of the superposed index modulation with the number of stored gratings $M$, and the resulting per-grating diffraction efficiency under a finite per-cell dynamic range, compared with photorefractive recording. |
+| [`manuscript-figures-5and6.ipynb`](manuscript-figures-5and6.ipynb) | Fig. 4-6 | Experimental demonstration of our proposed recording device |
+
 
 Both run in Google Colab with no setup beyond the default environment. Each notebook contains the explanatory text, the code, and the figure; open either in Colab with the badge at the top of the file or run it locally with `numpy` and `matplotlib`.
 
@@ -24,6 +26,10 @@ Baseline parameters: $\lambda_0 = 0.5$ µm, $n_0 = 1.5$, NA $= 0.5$, $\theta_S =
 ### `DAMMno.ipynb` (Fig. 3)
 
 With $M$ gratings of random phase superimposed in a cell, the RMS index modulation grows as $\sqrt{M}$ and the typical peak as $\sqrt{M\log M}$. Under a finite per-cell ceiling, a cell limited by average stored energy therefore holds per-grating efficiency $\eta \propto M^{-1}$, and a hard-clipping cell holds $\eta \propto (M\log M)^{-1}$, against the $M^{-2}$ of an optimally scheduled photorefractive medium. The notebook computes the superposition statistics by Monte Carlo (200 phase draws per $M$, $M$ from 1 to 200), converts each excursion measure to an allowed per-grating amplitude, and plots the resulting efficiency. Fitted log-log slopes are printed as a check: $-1.00$ (RMS-limited), $-1.22$ (hard-clip), $-2.00$ (photorefractive).
+
+### `manuscript-figures-5and6.ipynb` (Figs. 4-6)
+
+Experimental demonstrations.
 
 ## Scope
 
