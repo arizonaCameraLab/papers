@@ -33,7 +33,7 @@ Experimental demonstrations.
 
 ## Scope
 
-Fig. 2 uses the paraxial, Born-approximation crosstalk theory of Barbastathis et al. and treats interpage crosstalk as uncorrelated noise on the hidden-layer coefficients; crosstalk from a stored key that resembles the probe is governed by the pattern statistics of the dense associative memory and is not modeled. Fig. 3 gives scaling only; the modulation ceiling is normalized, and an absolute capacity requires the per-cell voltage swing and modulation mechanism discussed in Sec. 4 of the paper. The experimental results of Sec. 4 (opposing-diode cell) are measured data and are not reproduced here.
+Fig. 2 uses the paraxial, Born-approximation crosstalk theory of Barbastathis et al. and treats interpage crosstalk as uncorrelated noise on the hidden-layer coefficients; crosstalk from a stored key that resembles the probe is governed by the pattern statistics of the dense associative memory and is not modeled. Fig. 3 gives scaling only; the modulation ceiling is normalized, and an absolute capacity requires the per-cell voltage swing and modulation mechanism discussed in Sec. 4 of the paper.
 
 ## Citation
 
